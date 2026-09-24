@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Kirish — Kino Bot Admin</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <form class="form-box" method="post" action="/login">
+      <h2>🎬 Kino Bot Admin</h2>
+      {% if error %}<p class="error">{{ error }}</p>{% endif %}
+      <label>Login</label>
+      <input type="text" name="username" required>
+      <label>Parol</label>
+      <input type="password" name="password" required>
+      <button class="btn" type="submit" style="width:100%">Kirish</button>
+    </form>
+  </div>
+</body>
+</html>

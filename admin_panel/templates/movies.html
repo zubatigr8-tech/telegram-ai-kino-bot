@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Kinolar — Kino Bot Admin{% endblock %}
+{% block content %}
+<h2>🎬 Kinolar ({{ movies|length }})</h2>
+
+<div class="form-box">
+  <h3 style="margin-top:0">Yangi kino qo'shish</h3>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <p style="color:var(--muted); font-size:13px; margin-top:-6px">
+    file_id olish uchun: video/faylni bot'ga admin sifatida yuboring, bot uni sizga qaytarib beradi.
+  </p>
+  <form method="post" action="/movies/add">
+    <label>Kod (raqam)</label>
+    <input type="number" name="code" required>
+    <label>Nomi</label>
+    <input type="text" name="title" required>
+    <label>Tavsif (ixtiyoriy)</label>
+    <textarea name="description" rows="2"></textarea>
+    <label>file_id</label>
+    <input type="text" name="file_id" required>
+    <label>Turi</label>
+    <select name="file_type" style="width:100%; padding:9px 12px; margin-bottom:12px; border-radius:8px; border:1px solid var(--border); background:#0f1220; color:var(--text);">
+      <option value="video">video</option>
+      <option value="document">document</option>
+    </select>
+    <button class="btn" type="submit">Qo'shish</button>
+  </form>
+</div>
+
+<table>
+  <tr><th>Kod</th><th>Nomi</th><th>Turi</th><th>Qo'shilgan</th><th></th></tr>
+  {% for m in movies %}
+  <tr>
+    <td>{{ m.code }}</td>
+    <td>{{ m.title }}</td>
+    <td>{{ m.file_type }}</td>
+    <td>{{ m.added_at.strftime('%Y-%m-%d') }}</td>
+    <td>
+      <form class="inline" method="post" action="/movies/{{ m.id }}/delete">
+        <button class="btn small danger" type="submit">O'chirish</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

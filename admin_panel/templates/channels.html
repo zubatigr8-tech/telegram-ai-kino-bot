@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Kanallar — Kino Bot Admin{% endblock %}
+{% block content %}
+<h2>📢 Majburiy obuna kanallari ({{ channels|length }})</h2>
+
+<div class="form-box">
+  <h3 style="margin-top:0">Kanal qo'shish</h3>
+  <p style="color:var(--muted); font-size:13px; margin-top:-6px">
+    Bot shu kanalda admin bo'lishi shart, aks holda obunani tekshira olmaydi.
+  </p>
+  <form method="post" action="/channels/add">
+    <label>Chat ID (masalan -1001234567890)</label>
+    <input type="number" name="chat_id" required>
+    <label>Username (ixtiyoriy, @ belgisiz)</label>
+    <input type="text" name="username">
+    <label>Nomi</label>
+    <input type="text" name="title">
+    <button class="btn" type="submit">Qo'shish</button>
+  </form>
+</div>
+
+<table>
+  <tr><th>Chat ID</th><th>Username</th><th>Nomi</th><th>Holat</th><th></th></tr>
+  {% for c in channels %}
+  <tr>
+    <td>{{ c.chat_id }}</td>
+    <td>{{ '@' + c.username if c.username else '—' }}</td>
+    <td>{{ c.title or '—' }}</td>
+    <td>
+      {% if c.is_active %}<span class="badge ok">Faol</span>
+      {% else %}<span class="badge blocked">O'chirilgan</span>{% endif %}
+    </td>
+    <td>
+      <form class="inline" method="post" action="/channels/{{ c.id }}/toggle">
+        <button class="btn small" type="submit">{{ 'O\'chirish' if c.is_active else 'Yoqish' }}</button>
+      </form>
+      <form class="inline" method="post" action="/channels/{{ c.id }}/delete">
+        <button class="btn small danger" type="submit">O'chirib tashlash</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

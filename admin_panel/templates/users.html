@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Foydalanuvchilar — Kino Bot Admin{% endblock %}
+{% block content %}
+<h2>👤 Foydalanuvchilar ({{ users|length }})</h2>
+<table>
+  <tr><th>ID</th><th>Username</th><th>Ism</th><th>Qo'shilgan</th><th>Holat</th><th></th></tr>
+  {% for u in users %}
+  <tr>
+    <td>{{ u.tg_id }}</td>
+    <td>{{ '@' + u.username if u.username else '—' }}</td>
+    <td>{{ u.full_name or '—' }}</td>
+    <td>{{ u.joined_at.strftime('%Y-%m-%d %H:%M') }}</td>
+    <td>
+      {% if u.is_blocked %}<span class="badge blocked">Bloklangan</span>
+      {% else %}<span class="badge ok">Faol</span>{% endif %}
+    </td>
+    <td>
+      <form class="inline" method="post" action="/users/{{ u.tg_id }}/toggle">
+        <button class="btn small {{ 'danger' if not u.is_blocked else '' }}" type="submit">
+          {{ 'Blokdan chiqarish' if u.is_blocked else 'Bloklash' }}
+        </button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

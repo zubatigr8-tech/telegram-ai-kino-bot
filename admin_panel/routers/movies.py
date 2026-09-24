@@ -1,0 +1,62 @@
+from fastapi import APIRouter, Form, Request
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import select
+
+from admin_panel.auth import is_logged_in
+from shared.db.database import get_session
+from shared.db.models import Movie
+
+router = APIRouter()
+templates = Jinja2Templates(directory="admin_panel/templates")
+
+
+@router.get("/movies")
+async def list_movies(request: Request, error: str | None = None):
+    if not is_logged_in(request):
+        return RedirectResponse("/login", status_code=302)
+
+    async with get_session() as session:
+        result = await session.execute(select(Movie).order_by(Movie.code))
+        movies = list(result.scalars().all())
+
+    return templates.TemplateResponse("movies.html", {"request": request, "movies": movies, "error": error})
+
+
+@router.post("/movies/add")
+async def add_movie(
+    request: Request,
+    code: int = Form(...),
+    title: str = Form(...),
+    description: str = Form(""),
+    file_id: str = Form(...),
+    file_type: str = Form("video"),
+):
+    if not is_logged_in(request):
+        return RedirectResponse("/login", status_code=302)
+
+    async with get_session() as session:
+        existing = await session.execute(select(Movie).where(Movie.code == code))
+        if existing.scalar_one_or_none() is not None:
+            return RedirectResponse(f"/movies?error=Kod+{code}+allaqachon+band", status_code=302)
+
+        session.add(
+            Movie(code=code, title=title, description=description, file_id=file_id, file_type=file_type)
+        )
+        await session.commit()
+
+    return RedirectResponse("/movies", status_code=302)
+
+
+@router.post("/movies/{movie_id}/delete")
+async def delete_movie(movie_id: int, request: Request):
+    if not is_logged_in(request):
+        return RedirectResponse("/login", status_code=302)
+
+    async with get_session() as session:
+        movie = await session.get(Movie, movie_id)
+        if movie:
+            await session.delete(movie)
+            await session.commit()
+
+    return RedirectResponse("/movies", status_code=302)

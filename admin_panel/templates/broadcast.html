@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Xabar yuborish — Kino Bot Admin{% endblock %}
+{% block content %}
+<h2>🔔 Barchaga xabar yuborish</h2>
+
+<div class="form-box">
+  <form method="post" action="/broadcast/send">
+    <label>Xabar matni</label>
+    <textarea name="text" rows="4" required></textarea>
+    <label>Rasm file_id (ixtiyoriy)</label>
+    <input type="text" name="photo_file_id">
+    <button class="btn" type="submit">Yuborish</button>
+  </form>
+</div>
+
+<h3>So'nggi xabarlar</h3>
+<table>
+  <tr><th>Matn</th><th>Holat</th><th>Yuborildi</th><th>Vaqt</th></tr>
+  {% for j in jobs %}
+  <tr>
+    <td>{{ j.text[:60] }}{{ '…' if j.text|length > 60 else '' }}</td>
+    <td>
+      {% if j.status == 'done' %}<span class="badge ok">Yuborildi</span>
+      {% else %}<span class="badge blocked">Navbatda</span>{% endif %}
+    </td>
+    <td>{{ j.sent_count }}</td>
+    <td>{{ j.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

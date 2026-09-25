@@ -4,27 +4,16 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from bot.claude_client import ask_text
-from bot.keyboards import BTN_AI, in_mode_menu
-from bot.states import UserFlow
 
 router = Router(name="ai_chat")
 
 MAX_HISTORY_MESSAGES = 12  # oxirgi N ta xabar (user+assistant jami) kontekst uchun saqlanadi
 
 
-@router.message(F.text == BTN_AI)
-async def start_ai_chat(message: Message, state: FSMContext) -> None:
-    await state.set_state(UserFlow.ai_chat)
-    await state.update_data(history=[])
-    await message.answer(
-        "🧠 AI suhbat rejimi yoqildi. Savolingizni yozing.\n\n"
-        "Bosh menyuga qaytish uchun pastdagi tugmani bosing.",
-        reply_markup=in_mode_menu,
-    )
-
-
-@router.message(UserFlow.ai_chat, F.text)
+@router.message(F.text)
 async def handle_ai_message(message: Message, state: FSMContext) -> None:
+    # Bu handler faqat raqamdan iborat bo'lmagan xabarlarga ishga tushadi —
+    # sof raqamlarni movie.py o'zidan oldinroq (routerlar tartibida) ushlab oladi.
     data = await state.get_data()
     history = data.get("history", [])
     history.append({"role": "user", "content": message.text})

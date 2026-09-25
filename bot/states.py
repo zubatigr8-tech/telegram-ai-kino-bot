@@ -1,11 +1,6 @@
 from aiogram.fsm.state import State, StatesGroup
 
 
-class UserFlow(StatesGroup):
-    movie_search = State()
-    ai_chat = State()
-
-
 class AdminFlow(StatesGroup):
     add_movie_file = State()
     add_movie_code = State()

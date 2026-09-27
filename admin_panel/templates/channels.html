@@ -12,8 +12,12 @@
   <form method="post" action="/channels/add">
     <label>Chat ID (masalan -1001234567890)</label>
     <input type="number" name="chat_id" required>
-    <label>Username (ixtiyoriy, @ belgisiz)</label>
+    <label>Username (faqat ochiq kanal uchun, masalan @kanal — ixtiyoriy)</label>
     <input type="text" name="username">
+    <p style="color:var(--muted); font-size:13px; margin-top:-6px">
+      Yopiq kanal uchun bo'sh qoldiring — bot taklif havolasini o'zi yaratadi.
+      Kanal qo'shishning eng oson yo'li: botda <b>/admin → 📢 Kanallar → ➕ Kanal qo'shish</b>.
+    </p>
     <label>Nomi</label>
     <input type="text" name="title">
     <button class="btn" type="submit">Qo'shish</button>
@@ -25,7 +29,7 @@
   {% for c in channels %}
   <tr>
     <td>{{ c.chat_id }}</td>
-    <td>{{ '@' + c.username if c.username else '—' }}</td>
+    <td>{{ '@' + c.username if c.username else (c.invite_link or '—') }}</td>
     <td>{{ c.title or '—' }}</td>
     <td>
       {% if c.is_active %}<span class="badge ok">Faol</span>

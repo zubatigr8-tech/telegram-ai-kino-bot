@@ -11,7 +11,7 @@
   </p>
   <form method="post" action="/movies/add">
     <label>Kod (raqam)</label>
-    <input type="number" name="code" required>
+    <input type="number" name="code" min="0" max="999999999" required>
     <label>Nomi</label>
     <input type="text" name="title" required>
     <label>Tavsif (ixtiyoriy)</label>

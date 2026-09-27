@@ -9,9 +9,15 @@ from shared.db.models import Movie
 
 router = Router(name="movie")
 
+MAX_CODE_DIGITS = 9  # bazadagi Integer ustuniga sig'adigan xavfsiz uzunlik
+
 
 @router.message(F.text.regexp(r"^\d+$"))
 async def search_movie(message: Message) -> None:
+    if len(message.text) > MAX_CODE_DIGITS:
+        await message.answer(f"❌ <b>{h(message.text)}</b> raqamli kino topilmadi. Boshqa raqam yuboring.")
+        return
+
     code = int(message.text)
     async with get_session() as session:
         result = await session.execute(select(Movie).where(Movie.code == code))
@@ -21,7 +27,10 @@ async def search_movie(message: Message) -> None:
         await message.answer(f"❌ <b>{code}</b> raqamli kino topilmadi. Boshqa raqam yuboring.")
         return
 
-    caption = f"🎬 <b>{h(movie.title)}</b>\n\n{h(movie.description or '')}".strip()
+    description = movie.description or ""
+    if len(description) > 700:  # Telegram caption limiti 1024 belgi
+        description = description[:700] + "…"
+    caption = f"🎬 <b>{h(movie.title)}</b>\n\n{h(description)}".strip()
     if movie.file_type == "document":
         await message.answer_document(movie.file_id, caption=caption)
     else:

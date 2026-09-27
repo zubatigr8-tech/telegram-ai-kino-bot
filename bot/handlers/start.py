@@ -1,13 +1,10 @@
-from html import escape as h
-
 from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from shared.config import settings
-from shared.db.database import get_session
-from shared.db.models import User, utcnow
+from bot.keyboards import subscription_keyboard
+from bot.middlewares import get_active_channels, is_subscribed
 
 router = Router(name="start")
 
@@ -19,53 +16,30 @@ WELCOME_TEXT = (
 )
 
 
-async def upsert_user(message: Message) -> bool:
-    """Foydalanuvchini bazaga yozadi. True qaytarsa — bu YANGI foydalanuvchi."""
-    async with get_session() as session:
-        user = await session.get(User, message.from_user.id)
-        is_new = user is None
-        if user is None:
-            user = User(
-                tg_id=message.from_user.id,
-                username=message.from_user.username,
-                full_name=message.from_user.full_name,
-            )
-            session.add(user)
-        else:
-            user.username = message.from_user.username
-            user.full_name = message.from_user.full_name
-            user.last_active = utcnow()
-        await session.commit()
-    return is_new
-
-
-async def notify_admins_new_user(message: Message) -> None:
-    label = f"@{message.from_user.username}" if message.from_user.username else (message.from_user.full_name or "—")
-    text = (
-        "🆕 <b>Yangi obunachi!</b>\n\n"
-        f"👤 {h(label)}\n"
-        f"ID: <code>{message.from_user.id}</code>"
-    )
-    for admin_id in settings.ADMIN_IDS:
-        try:
-            await message.bot.send_message(admin_id, text)
-        except Exception:
-            pass  # admin botni hali /start qilmagan bo'lishi mumkin — o'tkazib yuboramiz
-
-
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext) -> None:
+    # Foydalanuvchini bazaga yozish va adminlarga xabar berish UserMiddleware'da bajariladi
     await state.clear()
-    is_new = await upsert_user(message)
-    if is_new:
-        await notify_admins_new_user(message)
     await message.answer(WELCOME_TEXT)
 
 
 @router.callback_query(F.data == "check_subscription")
-async def check_subscription_callback(callback: CallbackQuery, state: FSMContext) -> None:
-    # Bu callback SubscriptionMiddleware tomonidan qayta tekshiriladi;
-    # agar shu yerga yetib kelgan bo'lsa, demak foydalanuvchi endi obuna bo'lgan.
+async def check_subscription_callback(callback: CallbackQuery) -> None:
+    # Bu callback SubscriptionMiddleware'dan ozod qilingan, shuning uchun obunani shu yerda tekshiramiz
+    channels = await get_active_channels()
+    if channels and not await is_subscribed(callback.bot, callback.from_user.id, channels):
+        await callback.answer("❌ Hali barcha kanallarga obuna bo'lmagansiz.", show_alert=True)
+        if callback.message:
+            try:
+                await callback.message.edit_reply_markup(reply_markup=subscription_keyboard(channels))
+            except Exception:
+                pass  # tugmalar o'zgarmagan bo'lsa Telegram "message is not modified" qaytaradi
+        return
+
     await callback.answer("Rahmat! Obuna tasdiqlandi ✅")
     if callback.message:
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
         await callback.message.answer("Endi kino kodini yuborishingiz mumkin 🎬")

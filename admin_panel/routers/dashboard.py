@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 
 from admin_panel.auth import is_logged_in
+from admin_panel.templating import templates
 from shared.db.database import get_session
 from shared.db.models import BroadcastJob, Channel, Movie, User
 
 router = APIRouter()
-templates = Jinja2Templates(directory="admin_panel/templates")
 
 
 @router.get("/")
@@ -24,7 +23,7 @@ async def dashboard(request: Request):
         total_movies = (await session.execute(select(func.count(Movie.id)))).scalar_one()
         total_channels = (await session.execute(select(func.count(Channel.id)))).scalar_one()
         pending_jobs = (
-            await session.execute(select(func.count(BroadcastJob.id)).where(BroadcastJob.status == "pending"))
+            await session.execute(select(func.count(BroadcastJob.id)).where(BroadcastJob.status.in_(("pending", "sending"))))
         ).scalar_one()
         total_sent = (await session.execute(select(func.sum(BroadcastJob.sent_count)))).scalar_one() or 0
 

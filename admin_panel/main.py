@@ -1,18 +1,26 @@
+import logging
+
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from admin_panel.auth import check_credentials
 from admin_panel.routers import broadcast, channels, dashboard, movies, users
+from admin_panel.templating import STATIC_DIR, templates
 from shared.config import settings
 from shared.db.database import init_db
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Kino Bot Admin Panel")
-app.add_middleware(SessionMiddleware, secret_key=settings.ADMIN_PANEL_SECRET_KEY)
-app.mount("/static", StaticFiles(directory="admin_panel/static"), name="static")
-templates = Jinja2Templates(directory="admin_panel/templates")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.ADMIN_PANEL_SECRET_KEY,
+    same_site="strict",  # boshqa saytlardan panelga yashirin so'rov (CSRF) yuborilishining oldini oladi
+    max_age=7 * 24 * 60 * 60,
+)
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(dashboard.router)
 app.include_router(users.router)
@@ -24,6 +32,10 @@ app.include_router(broadcast.router)
 @app.on_event("startup")
 async def on_startup():
     await init_db()
+    if settings.ADMIN_PANEL_SECRET_KEY in ("dev-secret-key", "iltimos-shu-yerni-tasodifiy-matnga-almashtiring"):
+        logger.warning("ADMIN_PANEL_SECRET_KEY o'zgartirilmagan! .env faylida tasodifiy matnga almashtiring.")
+    if settings.ADMIN_PANEL_PASSWORD in ("admin", "admin123"):
+        logger.warning("Admin panel paroli juda oddiy! .env faylida ADMIN_PANEL_PASSWORD'ni almashtiring.")
 
 
 @app.get("/login")

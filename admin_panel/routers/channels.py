@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from admin_panel.auth import is_logged_in
+from admin_panel.templating import templates
 from shared.db.database import get_session
 from shared.db.models import Channel
 
 router = APIRouter()
-templates = Jinja2Templates(directory="admin_panel/templates")
 
 
 @router.get("/channels")
-async def list_channels(request: Request):
+async def list_channels(request: Request, error: str | None = None):
     if not is_logged_in(request):
         return RedirectResponse("/login", status_code=302)
 
@@ -20,7 +20,7 @@ async def list_channels(request: Request):
         result = await session.execute(select(Channel))
         channels = list(result.scalars().all())
 
-    return templates.TemplateResponse("channels.html", {"request": request, "channels": channels})
+    return templates.TemplateResponse("channels.html", {"request": request, "channels": channels, "error": error})
 
 
 @router.post("/channels/add")
@@ -33,9 +33,14 @@ async def add_channel(
     if not is_logged_in(request):
         return RedirectResponse("/login", status_code=302)
 
+    username = username.strip().lstrip("@") or None
     async with get_session() as session:
-        session.add(Channel(chat_id=chat_id, username=username or None, title=title or None))
-        await session.commit()
+        session.add(Channel(chat_id=chat_id, username=username, title=title.strip() or None))
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            return RedirectResponse("/channels?error=Bu+kanal+allaqachon+qo'shilgan", status_code=302)
 
     return RedirectResponse("/channels", status_code=302)
 

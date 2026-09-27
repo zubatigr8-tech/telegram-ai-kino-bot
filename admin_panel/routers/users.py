@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
 from admin_panel.auth import is_logged_in
+from admin_panel.templating import templates
 from shared.db.database import get_session
 from shared.db.models import User
 
 router = APIRouter()
-templates = Jinja2Templates(directory="admin_panel/templates")
 
 
 @router.get("/users")

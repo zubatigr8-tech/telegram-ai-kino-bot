@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from bot.claude_client import ask_text
+from bot.utils import answer_plain
 
 router = Router(name="ai_chat")
 
@@ -28,6 +29,7 @@ async def handle_ai_message(message: Message, state: FSMContext) -> None:
         await message.answer("⚠️ AI bilan bog'lanishda xatolik yuz berdi. Birozdan so'ng qayta urinib ko'ring.")
         return
 
-    history.append({"role": "assistant", "content": reply})
-    await state.update_data(history=history[-MAX_HISTORY_MESSAGES:])
-    await message.answer(reply)
+    if reply:
+        history.append({"role": "assistant", "content": reply})
+        await state.update_data(history=history[-MAX_HISTORY_MESSAGES:])
+    await answer_plain(message, reply)

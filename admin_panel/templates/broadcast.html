@@ -5,7 +5,7 @@
 
 <div class="form-box">
   <form method="post" action="/broadcast/send">
-    <label>Xabar matni</label>
+    <label>Xabar matni (HTML: &lt;b&gt;qalin&lt;/b&gt;, &lt;i&gt;kursiv&lt;/i&gt;)</label>
     <textarea name="text" rows="4" required></textarea>
     <label>Rasm file_id (ixtiyoriy)</label>
     <input type="text" name="photo_file_id">
@@ -21,6 +21,8 @@
     <td>{{ j.text[:60] }}{{ '…' if j.text|length > 60 else '' }}</td>
     <td>
       {% if j.status == 'done' %}<span class="badge ok">Yuborildi</span>
+      {% elif j.status == 'sending' %}<span class="badge blocked">Yuborilmoqda…</span>
+      {% elif j.status == 'failed' %}<span class="badge blocked">Xatolik / to'xtatilgan</span>
       {% else %}<span class="badge blocked">Navbatda</span>{% endif %}
     </td>
     <td>{{ j.sent_count }}</td>

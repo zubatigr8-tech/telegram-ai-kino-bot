@@ -8,6 +8,4 @@ class AdminFlow(StatesGroup):
     add_movie_description = State()
     delete_movie_code = State()
     add_channel_chatid = State()
-    add_channel_username = State()
-    add_channel_title = State()
     broadcast_text = State()

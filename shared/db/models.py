@@ -43,6 +43,8 @@ class Channel(Base):
     chat_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     username: Mapped[str | None] = mapped_column(String(64), nullable=True)
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Yopiq (username'siz) kanallar uchun taklif havolasi — bot uni o'zi yaratadi
+    invite_link: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 

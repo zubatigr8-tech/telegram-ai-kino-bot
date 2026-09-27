@@ -9,43 +9,18 @@ from typing import Any, Awaitable, Callable
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject
 from aiogram.types import User as TgUser
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from bot.channels import ensure_channel_links, get_active_channels, is_subscribed
 from bot.keyboards import subscription_keyboard
 from shared.config import settings
 from shared.db.database import get_session
-from shared.db.models import Channel, User, utcnow
+from shared.db.models import User, utcnow
 
 logger = logging.getLogger(__name__)
 
 EXEMPT_CALLBACKS = {"check_subscription"}
 LAST_ACTIVE_UPDATE_INTERVAL = datetime.timedelta(minutes=5)
-
-
-async def get_active_channels() -> list[Channel]:
-    async with get_session() as session:
-        result = await session.execute(select(Channel).where(Channel.is_active == True))  # noqa: E712
-        return list(result.scalars().all())
-
-
-async def is_subscribed(bot, user_id: int, channels: list[Channel]) -> bool:
-    for ch in channels:
-        try:
-            member = await bot.get_chat_member(ch.chat_id, user_id)
-        except Exception:
-            logger.warning(
-                "Obunani tekshirib bo'lmadi (chat_id=%s). Bot o'sha kanalda admin ekanini tekshiring.",
-                ch.chat_id,
-            )
-            return False
-        if member.status in ("member", "administrator", "creator"):
-            continue
-        # "restricted" — cheklangan, lekin kanal a'zosi bo'lib qolishi mumkin
-        if member.status == "restricted" and getattr(member, "is_member", False):
-            continue
-        return False
-    return True
 
 
 def is_start_command(event: TelegramObject) -> bool:
@@ -181,6 +156,7 @@ class SubscriptionMiddleware(BaseMiddleware):
             "📢 Botdan foydalanish uchun quyidagi kanal(lar)ga obuna bo'ling, "
             "so'ng \"✅ Tekshirish\" tugmasini bosing:"
         )
+        await ensure_channel_links(bot, channels)
         kb = subscription_keyboard(channels)
         if isinstance(event, Message):
             await event.answer(text, reply_markup=kb)

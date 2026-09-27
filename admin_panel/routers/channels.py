@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from admin_panel.auth import is_logged_in
 from admin_panel.templating import templates
+from bot.channels import clean_username
 from shared.db.database import get_session
 from shared.db.models import Channel
 
@@ -33,7 +34,8 @@ async def add_channel(
     if not is_logged_in(request):
         return RedirectResponse("/login", status_code=302)
 
-    username = username.strip().lstrip("@") or None
+    # Noto'g'ri username (masalan kanal nomi) saqlanmaydi — havola bot tomonidan avtomatik olinadi
+    username = clean_username(username)
     async with get_session() as session:
         session.add(Channel(chat_id=chat_id, username=username, title=title.strip() or None))
         try:

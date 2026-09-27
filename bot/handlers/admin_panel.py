@@ -1,9 +1,11 @@
 """Telegram ichidagi admin panel — faqat ADMIN_IDS'dagilar uchun.
 Veb-admin paneldagi asosiy bo'limlarni (statistika, foydalanuvchilar, kinolar,
 kanallar, xabar yuborish) botning o'zida, inline tugmalar orqali boshqaradi."""
+import re
 from html import escape as h
 
 from aiogram import F, Router
+from aiogram.enums import MessageOriginType
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
@@ -11,6 +13,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
+from bot.channels import ChannelError, channel_url, clean_username, fetch_channel_info
 from bot.states import AdminFlow
 from shared.config import settings
 from shared.db.database import get_session
@@ -325,8 +328,8 @@ async def render_channels(callback: CallbackQuery) -> None:
         lines = []
         for c in channels:
             status = "✅" if c.is_active else "🚫"
-            name = f"@{c.username}" if c.username else str(c.chat_id)
-            lines.append(f"{status} {h(c.title or name)} ({name})")
+            url = channel_url(c) or "⚠️ havola yo'q"
+            lines.append(f"{status} {h(c.title or str(c.chat_id))}\n    ID: <code>{c.chat_id}</code> | {h(url)}")
         body = "\n".join(lines)
     else:
         body = "Hozircha kanal qo'shilmagan (obuna tekshiruvi o'chirilgan)."
@@ -343,7 +346,7 @@ async def render_channels(callback: CallbackQuery) -> None:
     kb.row(InlineKeyboardButton(text="⬅️ Orqaga", callback_data="adm:menu"))
 
     text = f"📢 <b>Majburiy kanallar</b>\n\n{body}"
-    await callback.message.edit_text(text, reply_markup=kb.as_markup())
+    await callback.message.edit_text(text, reply_markup=kb.as_markup(), disable_web_page_preview=True)
     await callback.answer()
 
 
@@ -382,58 +385,67 @@ async def cb_add_channel_start(callback: CallbackQuery, state: FSMContext) -> No
     await state.set_state(AdminFlow.add_channel_chatid)
     await callback.message.edit_text(
         "📢 <b>Yangi kanal qo'shish</b>\n\n"
-        "Kanalning chat ID raqamini yuboring (masalan -1001234567890).\n"
-        "Bot shu kanalda admin bo'lishi shart.",
+        "1️⃣ Avval botni kanalga <b>admin</b> qilib qo'shing.\n"
+        "2️⃣ Keyin shu yerga quyidagilardan birini yuboring:\n"
+        "• kanaldan istalgan postni <b>forward</b> qiling (eng oson yo'l);\n"
+        "• kanal ID raqami, masalan <code>-1001234567890</code>;\n"
+        "• ochiq kanal bo'lsa — <code>@username</code>.\n\n"
+        "Kanal nomi, havolasi (yopiq kanal uchun taklif havolasi) bot tomonidan avtomatik olinadi.",
         reply_markup=cancel_kb(),
     )
     await callback.answer()
 
 
-@router.message(AdminFlow.add_channel_chatid, F.text.regexp(r"^-?\d{1,18}$"))
-async def add_channel_receive_chatid(message: Message, state: FSMContext) -> None:
-    chat_id = int(message.text)
-    async with get_session() as session:
-        existing = await session.execute(select(Channel).where(Channel.chat_id == chat_id))
-        if existing.scalar_one_or_none() is not None:
-            await message.answer("⚠️ Bu kanal allaqachon qo'shilgan. Boshqa chat ID yuboring:", reply_markup=cancel_kb())
-            return
-    await state.update_data(chat_id=chat_id)
-    await state.set_state(AdminFlow.add_channel_username)
-    await message.answer(
-        'Kanal username\'ini yuboring (@ belgisiz), yoki "-" deb o\'tkazib yuboring:', reply_markup=cancel_kb()
-    )
+def _channel_ref_from_message(message: Message) -> int | str | None:
+    origin = message.forward_origin
+    if origin is not None and origin.type == MessageOriginType.CHANNEL:
+        return origin.chat.id
+    text = (message.text or "").strip()
+    if re.fullmatch(r"-?\d{5,18}", text):
+        return int(text)
+    username = clean_username(text)
+    if username:
+        return f"@{username}"
+    return None
 
 
 @router.message(AdminFlow.add_channel_chatid)
-async def add_channel_wrong_chatid(message: Message) -> None:
-    await message.answer("Iltimos, faqat raqam (chat ID) yuboring.", reply_markup=cancel_kb())
+async def add_channel_receive(message: Message, state: FSMContext) -> None:
+    chat_ref = _channel_ref_from_message(message)
+    if chat_ref is None:
+        await message.answer(
+            "Iltimos, kanaldan post forward qiling yoki kanal ID / @username yuboring.",
+            reply_markup=cancel_kb(),
+        )
+        return
 
-
-@router.message(AdminFlow.add_channel_username, F.text)
-async def add_channel_receive_username(message: Message, state: FSMContext) -> None:
-    username = None if message.text.strip() == "-" else message.text.strip().lstrip("@")
-    await state.update_data(username=username)
-    await state.set_state(AdminFlow.add_channel_title)
-    await message.answer('Kanal nomini yuboring (yoki "-"):', reply_markup=cancel_kb())
-
-
-@router.message(AdminFlow.add_channel_title, F.text)
-async def add_channel_receive_title(message: Message, state: FSMContext) -> None:
-    data = await state.get_data()
-    title = None if message.text.strip() == "-" else message.text.strip()
+    try:
+        info = await fetch_channel_info(message.bot, chat_ref)
+    except ChannelError as exc:
+        await message.answer(f"⚠️ {exc}", reply_markup=cancel_kb())
+        return
 
     async with get_session() as session:
-        session.add(Channel(chat_id=data["chat_id"], username=data.get("username"), title=title))
+        existing = await session.execute(select(Channel).where(Channel.chat_id == info["chat_id"]))
+        if existing.scalar_one_or_none() is not None:
+            await message.answer("⚠️ Bu kanal allaqachon qo'shilgan.", reply_markup=cancel_kb())
+            return
+        session.add(Channel(**info))
         try:
             await session.commit()
         except IntegrityError:
             await session.rollback()
-            await state.clear()
-            await message.answer("⚠️ Bu kanal allaqachon qo'shilgan.", reply_markup=main_admin_kb())
+            await message.answer("⚠️ Bu kanal allaqachon qo'shilgan.", reply_markup=cancel_kb())
             return
 
     await state.clear()
-    await message.answer("✅ Kanal qo'shildi!", reply_markup=main_admin_kb())
+    link = f"https://t.me/{info['username']}" if info["username"] else info["invite_link"]
+    await message.answer(
+        f"✅ Kanal qo'shildi!\n\n📢 <b>{h(info['title'] or str(info['chat_id']))}</b>\n"
+        f"ID: <code>{info['chat_id']}</code>\nHavola: {h(link)}",
+        reply_markup=main_admin_kb(),
+        disable_web_page_preview=True,
+    )
 
 
 # ---------- Xabar yuborish ----------

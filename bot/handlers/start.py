@@ -3,8 +3,8 @@ from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 
+from bot.channels import ensure_channel_links, get_active_channels, is_subscribed
 from bot.keyboards import subscription_keyboard
-from bot.middlewares import get_active_channels, is_subscribed
 
 router = Router(name="start")
 
@@ -30,6 +30,7 @@ async def check_subscription_callback(callback: CallbackQuery) -> None:
     if channels and not await is_subscribed(callback.bot, callback.from_user.id, channels):
         await callback.answer("❌ Hali barcha kanallarga obuna bo'lmagansiz.", show_alert=True)
         if callback.message:
+            await ensure_channel_links(callback.bot, channels)
             try:
                 await callback.message.edit_reply_markup(reply_markup=subscription_keyboard(channels))
             except Exception:

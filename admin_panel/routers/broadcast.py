@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
 from admin_panel.auth import is_logged_in
+from admin_panel.templating import templates
 from shared.db.database import get_session
 from shared.db.models import BroadcastJob
 
 router = APIRouter()
-templates = Jinja2Templates(directory="admin_panel/templates")
 
 
 @router.get("/broadcast")
@@ -29,7 +28,7 @@ async def send_broadcast(request: Request, text: str = Form(...), photo_file_id:
         return RedirectResponse("/login", status_code=302)
 
     async with get_session() as session:
-        session.add(BroadcastJob(text=text, photo_file_id=photo_file_id or None))
+        session.add(BroadcastJob(text=text, photo_file_id=photo_file_id.strip() or None))
         await session.commit()
 
     return RedirectResponse("/broadcast", status_code=302)

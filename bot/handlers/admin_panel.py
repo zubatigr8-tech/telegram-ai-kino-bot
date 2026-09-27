@@ -9,6 +9,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from bot.states import AdminFlow
 from shared.config import settings
@@ -79,7 +80,9 @@ async def cb_stats(callback: CallbackQuery) -> None:
         total_movies = (await session.execute(select(func.count(Movie.id)))).scalar_one()
         total_channels = (await session.execute(select(func.count(Channel.id)))).scalar_one()
         pending = (
-            await session.execute(select(func.count(BroadcastJob.id)).where(BroadcastJob.status == "pending"))
+            await session.execute(
+                select(func.count(BroadcastJob.id)).where(BroadcastJob.status.in_(("pending", "sending")))
+            )
         ).scalar_one()
         total_sent = (await session.execute(select(func.sum(BroadcastJob.sent_count)))).scalar_one() or 0
 
@@ -195,7 +198,7 @@ async def add_movie_wrong_file(message: Message) -> None:
     await message.answer("Iltimos, video yoki fayl yuboring.", reply_markup=cancel_kb())
 
 
-@router.message(AdminFlow.add_movie_code, F.text.regexp(r"^\d+$"))
+@router.message(AdminFlow.add_movie_code, F.text.regexp(r"^\d{1,9}$"))
 async def add_movie_receive_code(message: Message, state: FSMContext) -> None:
     code = int(message.text)
     async with get_session() as session:
@@ -210,12 +213,12 @@ async def add_movie_receive_code(message: Message, state: FSMContext) -> None:
 
 @router.message(AdminFlow.add_movie_code)
 async def add_movie_wrong_code(message: Message) -> None:
-    await message.answer("Iltimos, faqat raqam yuboring.", reply_markup=cancel_kb())
+    await message.answer("Iltimos, faqat raqam yuboring (ko'pi bilan 9 xonali).", reply_markup=cancel_kb())
 
 
 @router.message(AdminFlow.add_movie_title, F.text)
 async def add_movie_receive_title(message: Message, state: FSMContext) -> None:
-    await state.update_data(title=message.text)
+    await state.update_data(title=message.text.strip()[:255])
     await state.set_state(AdminFlow.add_movie_description)
     await message.answer('Tavsif yuboring (yoki "-" deb yozib o\'tkazib yuboring):', reply_markup=cancel_kb())
 
@@ -235,7 +238,16 @@ async def add_movie_receive_description(message: Message, state: FSMContext) -> 
                 file_type=data["file_type"],
             )
         )
-        await session.commit()
+        try:
+            await session.commit()
+        except IntegrityError:
+            # Shu orada kod boshqa joyda (masalan veb-panelda) band qilingan
+            await session.rollback()
+            await state.set_state(AdminFlow.add_movie_code)
+            await message.answer(
+                f"⚠️ Kod {data['code']} band bo'lib qoldi. Boshqa kod yuboring:", reply_markup=cancel_kb()
+            )
+            return
 
     await state.clear()
     await message.answer(
@@ -254,7 +266,7 @@ async def cb_delete_movie_start(callback: CallbackQuery, state: FSMContext) -> N
     await callback.answer()
 
 
-@router.message(AdminFlow.delete_movie_code, F.text.regexp(r"^\d+$"))
+@router.message(AdminFlow.delete_movie_code, F.text.regexp(r"^\d{1,9}$"))
 async def delete_movie_receive_code(message: Message, state: FSMContext) -> None:
     code = int(message.text)
     async with get_session() as session:
@@ -377,9 +389,15 @@ async def cb_add_channel_start(callback: CallbackQuery, state: FSMContext) -> No
     await callback.answer()
 
 
-@router.message(AdminFlow.add_channel_chatid, F.text.regexp(r"^-?\d+$"))
+@router.message(AdminFlow.add_channel_chatid, F.text.regexp(r"^-?\d{1,18}$"))
 async def add_channel_receive_chatid(message: Message, state: FSMContext) -> None:
-    await state.update_data(chat_id=int(message.text))
+    chat_id = int(message.text)
+    async with get_session() as session:
+        existing = await session.execute(select(Channel).where(Channel.chat_id == chat_id))
+        if existing.scalar_one_or_none() is not None:
+            await message.answer("⚠️ Bu kanal allaqachon qo'shilgan. Boshqa chat ID yuboring:", reply_markup=cancel_kb())
+            return
+    await state.update_data(chat_id=chat_id)
     await state.set_state(AdminFlow.add_channel_username)
     await message.answer(
         'Kanal username\'ini yuboring (@ belgisiz), yoki "-" deb o\'tkazib yuboring:', reply_markup=cancel_kb()
@@ -406,7 +424,13 @@ async def add_channel_receive_title(message: Message, state: FSMContext) -> None
 
     async with get_session() as session:
         session.add(Channel(chat_id=data["chat_id"], username=data.get("username"), title=title))
-        await session.commit()
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            await state.clear()
+            await message.answer("⚠️ Bu kanal allaqachon qo'shilgan.", reply_markup=main_admin_kb())
+            return
 
     await state.clear()
     await message.answer("✅ Kanal qo'shildi!", reply_markup=main_admin_kb())
@@ -427,13 +451,15 @@ async def cb_broadcast_start(callback: CallbackQuery, state: FSMContext) -> None
 
 @router.message(AdminFlow.broadcast_text, F.text)
 async def broadcast_receive_text(message: Message, state: FSMContext) -> None:
-    await state.update_data(text=message.text)
+    # html_text — admin qo'ygan qalin/kursiv formatlash saqlanadi, "<" kabi belgilar esa
+    # to'g'ri ekranlanadi (aks holda HTML rejimida xabar hech kimga yetib bormaydi)
+    await state.update_data(text=message.html_text)
     kb = InlineKeyboardBuilder()
     kb.button(text="✅ Yuborish", callback_data="adm:b:send")
     kb.button(text="❌ Bekor qilish", callback_data="adm:cancel")
     kb.adjust(1)
     await message.answer(
-        f"Quyidagi xabar <b>barcha</b> foydalanuvchilarga yuboriladi:\n\n{h(message.text)}\n\nTasdiqlaysizmi?",
+        f"Quyidagi xabar <b>barcha</b> foydalanuvchilarga yuboriladi:\n\n{message.html_text}\n\nTasdiqlaysizmi?",
         reply_markup=kb.as_markup(),
     )
 

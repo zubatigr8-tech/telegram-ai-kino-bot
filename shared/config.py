@@ -26,6 +26,19 @@ class Settings:
     )
     BACKUP_DIR: str = os.getenv("BACKUP_DIR", str(BASE_DIR / "backups"))
 
+    # --- Media yuklash (Instagram / YouTube / TikTok) ---
+    # Vaqtinchalik yuklab olingan fayllar papkasi (yuborilgach o'chiriladi)
+    DOWNLOAD_DIR: str = os.getenv("DOWNLOAD_DIR", str(BASE_DIR / "downloads"))
+    # Bir vaqtda nechta yuklash bajarilsin (server kuchiga qarab)
+    MAX_CONCURRENT_DOWNLOADS: int = int(os.getenv("MAX_CONCURRENT_DOWNLOADS", "3"))
+    # Oddiy Bot API 50 MB gacha fayl yuborishga ruxsat beradi
+    MAX_UPLOAD_MB: int = int(os.getenv("MAX_UPLOAD_MB", "50"))
+    # Bundan uzun videolar yuklanmaydi (soniya)
+    MAX_VIDEO_DURATION: int = int(os.getenv("MAX_VIDEO_DURATION", "1200"))
+    # Instagram/YouTube ba'zan login so'raydi — shunda brauzerdan eksport qilingan
+    # cookies.txt (Netscape formatida) yo'lini ko'rsating. Ixtiyoriy.
+    COOKIES_FILE: str = os.getenv("COOKIES_FILE", "")
+
     ADMIN_PANEL_SECRET_KEY: str = os.getenv("ADMIN_PANEL_SECRET_KEY", "dev-secret-key")
     ADMIN_PANEL_USERNAME: str = os.getenv("ADMIN_PANEL_USERNAME", "admin")
     ADMIN_PANEL_PASSWORD: str = os.getenv("ADMIN_PANEL_PASSWORD", "admin")

@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from admin_panel.auth import is_logged_in
 from admin_panel.templating import templates
 from shared.db.database import get_session
-from shared.db.models import BroadcastJob, Channel, Movie, User
+from shared.db.models import BroadcastJob, Channel, MediaCache, Movie, SongCache, User
 
 router = APIRouter()
 
@@ -26,6 +26,10 @@ async def dashboard(request: Request):
             await session.execute(select(func.count(BroadcastJob.id)).where(BroadcastJob.status.in_(("pending", "sending"))))
         ).scalar_one()
         total_sent = (await session.execute(select(func.sum(BroadcastJob.sent_count)))).scalar_one() or 0
+        total_downloads = (await session.execute(select(func.sum(MediaCache.requests)))).scalar_one() or 0
+        total_songs = (
+            await session.execute(select(func.count(SongCache.song_key)).where(SongCache.audio_file_id.is_not(None)))
+        ).scalar_one()
 
     return templates.TemplateResponse(
         "dashboard.html",
@@ -38,5 +42,7 @@ async def dashboard(request: Request):
             "total_channels": total_channels,
             "pending_jobs": pending_jobs,
             "total_sent": total_sent,
+            "total_downloads": total_downloads,
+            "total_songs": total_songs,
         },
     )

@@ -39,8 +39,10 @@ async def search_movie(message: Message) -> None:
 
 @router.message()
 async def not_a_code(message: Message) -> None:
-    # Kino kodidan boshqa har qanday xabar (matn, rasm, fayl, stiker...) uchun yo'riqnoma
+    # Kino kodi yoki havoladan boshqa har qanday xabar (matn, rasm, fayl, stiker...) uchun yo'riqnoma
     await message.answer(
-        "🎬 Iltimos, faqat kino kodini (raqamini) yuboring, masalan: <b>7</b>",
+        "🤖 Menga quyidagilardan birini yuboring:\n\n"
+        "🔗 <b>Instagram</b>, <b>YouTube</b> yoki <b>TikTok</b> havolasi — videosi va qo'shig'ini topib beraman\n"
+        "🎬 Kino kodi (raqam), masalan: <b>7</b>",
         reply_markup=ReplyKeyboardRemove(),
     )

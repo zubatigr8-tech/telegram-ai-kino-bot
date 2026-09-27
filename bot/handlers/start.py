@@ -8,10 +8,13 @@ from bot.keyboards import subscription_keyboard
 
 router = Router(name="start")
 
-WELCOME_TEXT = (
-    "Assalomu alaykum! 👋\n\n"
-    "🎬 Kinoni olish uchun kino kodini (raqamini) yuboring, masalan: <b>7</b>"
+HOW_TO_TEXT = (
+    "🔗 <b>Instagram</b>, <b>YouTube</b> yoki <b>TikTok</b> havolasini yuboring — "
+    "videoni yuklab, undagi qo'shiqni topib beraman 🎵\n\n"
+    "🎬 Kino olish uchun kino kodini (raqamini) yuboring, masalan: <b>7</b>"
 )
+
+WELCOME_TEXT = "Assalomu alaykum! 👋 Men <b>Topqir AI</b> — video va qo'shiq topuvchi yordamchingizman.\n\n" + HOW_TO_TEXT
 
 
 @router.message(CommandStart())
@@ -44,6 +47,6 @@ async def check_subscription_callback(callback: CallbackQuery) -> None:
         except Exception:
             pass
         await callback.message.answer(
-            "✅ Obuna tasdiqlandi!\n\n🎬 Endi kino kodini (raqamini) yuboring, masalan: <b>7</b>",
+            "✅ Obuna tasdiqlandi!\n\n" + HOW_TO_TEXT,
             reply_markup=ReplyKeyboardRemove(),
         )

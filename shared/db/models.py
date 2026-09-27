@@ -57,3 +57,30 @@ class BroadcastJob(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | done | failed
     sent_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class MediaCache(Base):
+    """Yuklangan havolalar keshi: bir xil havola qayta yuborilsa, qayta yuklamasdan
+    Telegram'dagi file_id orqali darhol yuboriladi."""
+    __tablename__ = "media_cache"
+
+    url_key: Mapped[str] = mapped_column(String(512), primary_key=True)
+    platform: Mapped[str] = mapped_column(String(20))  # instagram | youtube | tiktok
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    video_file_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    song_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    requests: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SongCache(Base):
+    """Topilgan qo'shiqlar: kalit — "ijrochi - nom" (kichik harflarda)."""
+    __tablename__ = "song_cache"
+
+    song_key: Mapped[str] = mapped_column(String(512), primary_key=True)
+    title: Mapped[str] = mapped_column(String(255))
+    artist: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    audio_file_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    shazam_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    youtube_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -1,7 +1,7 @@
 from html import escape as h
 
 from aiogram import F, Router
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardRemove
 from sqlalchemy import select
 
 from shared.db.database import get_session
@@ -35,3 +35,12 @@ async def search_movie(message: Message) -> None:
         await message.answer_document(movie.file_id, caption=caption)
     else:
         await message.answer_video(movie.file_id, caption=caption)
+
+
+@router.message()
+async def not_a_code(message: Message) -> None:
+    # Kino kodidan boshqa har qanday xabar (matn, rasm, fayl, stiker...) uchun yo'riqnoma
+    await message.answer(
+        "🎬 Iltimos, faqat kino kodini (raqamini) yuboring, masalan: <b>7</b>",
+        reply_markup=ReplyKeyboardRemove(),
+    )

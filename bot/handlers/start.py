@@ -1,7 +1,7 @@
 from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 
 from bot.keyboards import subscription_keyboard
 from bot.middlewares import get_active_channels, is_subscribed
@@ -10,17 +10,17 @@ router = Router(name="start")
 
 WELCOME_TEXT = (
     "Assalomu alaykum! 👋\n\n"
-    "🎬 Kino ko'rish uchun kino kodini (raqamini) yuboring, masalan: <b>7</b>\n\n"
-    "Boshqa savolingiz bo'lsa, shunchaki yozing — javob beraman.\n"
-    "Rasm yoki matnli (.txt) fayl yuborsangiz ham tahlil qilib beraman."
+    "🎬 Kinoni olish uchun kino kodini (raqamini) yuboring, masalan: <b>7</b>"
 )
 
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext) -> None:
-    # Foydalanuvchini bazaga yozish va adminlarga xabar berish UserMiddleware'da bajariladi
+    # /start'ga faqat kanal(lar)ga obuna bo'lgan foydalanuvchi yetib keladi —
+    # obuna bo'lmaganlarga SubscriptionMiddleware kanallar ro'yxatini ko'rsatadi.
+    # ReplyKeyboardRemove — eski versiyadan qolgan pastki tugmalarni o'chiradi.
     await state.clear()
-    await message.answer(WELCOME_TEXT)
+    await message.answer(WELCOME_TEXT, reply_markup=ReplyKeyboardRemove())
 
 
 @router.callback_query(F.data == "check_subscription")
@@ -42,4 +42,7 @@ async def check_subscription_callback(callback: CallbackQuery) -> None:
             await callback.message.delete()
         except Exception:
             pass
-        await callback.message.answer("Endi kino kodini yuborishingiz mumkin 🎬")
+        await callback.message.answer(
+            "✅ Obuna tasdiqlandi!\n\n🎬 Endi kino kodini (raqamini) yuboring, masalan: <b>7</b>",
+            reply_markup=ReplyKeyboardRemove(),
+        )

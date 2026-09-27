@@ -21,9 +21,6 @@ class Settings:
     BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")
     ADMIN_IDS: set[int] = _split_ids(os.getenv("ADMIN_IDS", ""))
 
-    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
-    CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-sonnet-5")
-
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", f"sqlite+aiosqlite:///{BASE_DIR / 'bot_database.db'}"
     )

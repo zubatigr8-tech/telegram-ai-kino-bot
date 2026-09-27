@@ -1,5 +1,5 @@
 """Bot middleware'lari:
-- UserMiddleware: har bir foydalanuvchini bazaga yozadi va bloklanganlarni to'xtatadi;
+- UserMiddleware: yangi foydalanuvchini faqat /start orqali qabul qiladi va bloklanganlarni to'xtatadi;
 - SubscriptionMiddleware: majburiy kanal obunasini tekshiradi."""
 import datetime
 import logging
@@ -48,19 +48,29 @@ async def is_subscribed(bot, user_id: int, channels: list[Channel]) -> bool:
     return True
 
 
-async def upsert_user(tg_user: TgUser) -> tuple[bool, bool]:
-    """Foydalanuvchini bazaga yozadi/yangilaydi. (is_new, is_blocked) qaytaradi."""
+def is_start_command(event: TelegramObject) -> bool:
+    if not isinstance(event, Message) or not event.text:
+        return False
+    command = event.text.split()[0].split("@")[0]
+    return command == "/start"
+
+
+async def upsert_user(tg_user: TgUser, create: bool = True) -> tuple[bool, bool, bool]:
+    """Foydalanuvchini bazaga yozadi/yangilaydi. (exists, is_new, is_blocked) qaytaradi.
+    create=False bo'lsa, bazada yo'q foydalanuvchi yaratilmaydi."""
     async with get_session() as session:
         user = await session.get(User, tg_user.id)
         if user is None:
+            if not create:
+                return False, False, False
             session.add(User(tg_id=tg_user.id, username=tg_user.username, full_name=tg_user.full_name))
             try:
                 await session.commit()
             except IntegrityError:
                 # Bir vaqtda kelgan ikki xabar — foydalanuvchi allaqachon yozib bo'lingan
                 await session.rollback()
-                return False, False
-            return True, False
+                return True, False, False
+            return True, True, False
 
         changed = False
         if user.username != tg_user.username or user.full_name != tg_user.full_name:
@@ -76,7 +86,7 @@ async def upsert_user(tg_user: TgUser) -> tuple[bool, bool]:
             changed = True
         if changed:
             await session.commit()
-        return False, user.is_blocked
+        return True, False, user.is_blocked
 
 
 async def notify_admins_new_user(bot, tg_user: TgUser) -> None:
@@ -93,9 +103,12 @@ async def notify_admins_new_user(bot, tg_user: TgUser) -> None:
             pass  # admin botni hali /start qilmagan bo'lishi mumkin — o'tkazib yuboramiz
 
 
+START_REQUIRED_TEXT = "👋 Botdan foydalanish uchun /start buyrug'ini bosing."
+
+
 class UserMiddleware(BaseMiddleware):
-    """Outer middleware: /start bosmagan bo'lsa ham foydalanuvchini bazaga yozadi
-    (aks holda u broadcast'dan tushib qoladi) va bloklangan foydalanuvchini to'xtatadi."""
+    """Outer middleware: yangi foydalanuvchi faqat /start bosgandan keyin bazaga yoziladi
+    (unga qadar boshqa xabarlarga /start bosish so'raladi) va bloklangan foydalanuvchi to'xtatiladi."""
 
     async def __call__(
         self,
@@ -111,16 +124,24 @@ class UserMiddleware(BaseMiddleware):
         if user is None or user.is_bot or (chat is not None and chat.type != "private"):
             return await handler(event, data)
 
+        is_admin = user.id in settings.ADMIN_IDS
         try:
-            is_new, is_blocked = await upsert_user(user)
+            exists, is_new, is_blocked = await upsert_user(user, create=is_admin or is_start_command(event))
         except Exception:
             logger.exception("Foydalanuvchini bazaga yozib bo'lmadi: %s", user.id)
             return await handler(event, data)
 
+        if not exists:
+            if isinstance(event, CallbackQuery):
+                await event.answer(START_REQUIRED_TEXT, show_alert=True)
+            elif isinstance(event, Message):
+                await event.answer(START_REQUIRED_TEXT)
+            return None
+
         if is_new and bot is not None:
             await notify_admins_new_user(bot, user)
 
-        if is_blocked and user.id not in settings.ADMIN_IDS:
+        if is_blocked and not is_admin:
             if isinstance(event, CallbackQuery):
                 await event.answer("🚫 Siz bloklangansiz.", show_alert=True)
             elif isinstance(event, Message):

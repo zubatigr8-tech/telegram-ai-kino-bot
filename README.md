@@ -1,13 +1,16 @@
-# 🎬 Telegram AI + Kino Bot
+# 🎬 Telegram Kino Bot
 
-AI bilan suhbatlashadigan, kino kodini qidirib topadigan, majburiy kanal obunasini
-tekshiradigan va alohida veb-admin panelga ega Telegram bot.
+Kino kodini qidirib topadigan, majburiy kanal obunasini tekshiradigan va alohida
+veb-admin panelga ega Telegram bot.
+
+## Foydalanuvchi uchun oqim
+
+1. Foydalanuvchi `/start` bosadi (bosmaguncha bot boshqa xabarlarga javob bermaydi, faqat `/start` so'raydi)
+2. Majburiy kanal(lar)ga obuna bo'lishi so'raladi → obuna bo'lib **✅ Tekshirish**ni bosadi
+3. Kino kodini (raqam) yuboradi → bot kinoni yuboradi
 
 ## Imkoniyatlar
 
-- 🤖 Telegramda foydalanuvchilar bilan avtomatik suhbat
-- 🧠 Claude AI orqali savollarga javob berish (kontekstni eslab qoladi)
-- 📁 Rasm va matnli (.txt) fayllarni AI orqali tahlil qilish
 - 🎬 Kino kodi (raqam) orqali video/fayl topib berish
 - 📢 Majburiy kanal obunasini tekshirish
 - 👤 Foydalanuvchilarni bazada saqlash, bloklash
@@ -54,12 +57,8 @@ cp .env.example .env
 |---|---|
 | `BOT_TOKEN` | Telegramda [@BotFather](https://t.me/BotFather) → `/newbot` |
 | `ADMIN_IDS` | Botga `/myid` yuborib, chiqqan raqam (vergul bilan bir nechtasi bo'lishi mumkin) |
-| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) → API Keys |
 | `ADMIN_PANEL_USERNAME` / `ADMIN_PANEL_PASSWORD` | O'zingiz o'ylab kiritasiz — admin panelga kirish uchun |
 | `ADMIN_PANEL_SECRET_KEY` | Ixtiyoriy tasodifiy uzun matn (sessiya shifrlash uchun) |
-
-`ANTHROPIC_API_KEY` bo'lmasa ham bot ishlaydi — faqat 🧠 AI bilan suhbat va fayl
-tahlili ishlamaydi, kino qidirish va boshqa qismlar to'liq ishlaydi.
 
 ## 3. Ishga tushirish
 
@@ -126,7 +125,6 @@ o'zi o'chadi). Qo'lda hech narsa qilish shart emas.
 
 ## Kengaytirish g'oyalari
 
-- `.pdf` / `.docx` fayllarni tahlil qilish (`bot/handlers/files.py`ga qo'shiladi)
 - Ko'p tilli interfeys
 - SQLite o'rniga PostgreSQL (`DATABASE_URL`ni almashtirish kifoya)
 - Kino kategoriyalari/qidiruv nom bo'yicha

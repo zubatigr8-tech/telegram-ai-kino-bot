@@ -26,7 +26,7 @@ async def main() -> None:
 
     await init_db()
 
-    session = AiohttpSession(proxy=settings.PROXY_URL) if settings.PROXY_URL else AiohttpSession()
+    session = AiohttpSession(proxy=settings.PROXY_URL) if getattr(settings, "PROXY_URL", "") else AiohttpSession()
     bot = Bot(token=settings.BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
 

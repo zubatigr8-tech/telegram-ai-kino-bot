@@ -140,7 +140,15 @@ def _downloaded_path(info: dict) -> Path | None:
 
 
 def _friendly_error(exc: Exception) -> MediaError:
+    # Asl xatoni logga yozamiz — hostingda (Railway → Logs) aniq sababni ko'rish uchun
+    logger.warning("Yuklab bo'lmadi: %s", exc)
     text = str(exc).lower()
+    if "not a bot" in text or "confirm you" in text:
+        # YouTube server (hosting) IP manzillarini "bot" deb to'sadi — cookies kerak
+        return MediaError(
+            "YouTube vaqtincha yuklashga ruxsat bermayapti. Birozdan so'ng qayta urinib ko'ring "
+            "yoki boshqa havola yuboring."
+        )
     if "private" in text or "login" in text or "sign in" in text or "cookies" in text:
         return MediaError("Bu video yopiq (private) yoki kirish talab qiladi — yuklab bo'lmadi.")
     if "unavailable" in text or "not available" in text or "removed" in text or "404" in text:

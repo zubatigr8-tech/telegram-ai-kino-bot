@@ -78,8 +78,9 @@ def _base_opts(outdir: Path) -> dict:
         "restrictfilenames": True,
         "http_headers": {"Accept-Language": "en-US,en;q=0.9"},
     }
-    if settings.PROXY_URL:
-        opts["proxy"] = settings.PROXY_URL
+    proxy = getattr(settings, "PROXY_URL", "")
+    if proxy:
+        opts["proxy"] = proxy
     if settings.COOKIES_FILE and os.path.exists(settings.COOKIES_FILE):
         opts["cookiefile"] = settings.COOKIES_FILE
     return opts

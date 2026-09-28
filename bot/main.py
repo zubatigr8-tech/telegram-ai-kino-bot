@@ -26,7 +26,9 @@ async def main() -> None:
 
     await init_db()
 
-    session = AiohttpSession(proxy=settings.PROXY_URL) if getattr(settings, "PROXY_URL", "") else AiohttpSession()
+    # 300 soniya: katta videoni sekin internetda yuklash standart 60 soniyaga sig'masligi mumkin
+    proxy = getattr(settings, "PROXY_URL", "") or None
+    session = AiohttpSession(proxy=proxy, timeout=300)
     bot = Bot(token=settings.BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
 

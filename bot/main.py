@@ -48,7 +48,10 @@ async def main() -> None:
     dp.include_router(media.router)  # Instagram / YouTube / TikTok havolalari
     dp.include_router(movie.router)  # oxirgi bo'lishi kerak: unda qolgan barcha xabarlar uchun yo'riqnoma bor
 
-    logger.info("Bot ishga tushdi...")
+    # Token boshqa joyda webhook bilan ishlatilgan bo'lsa, polling xabarlarni olmaydi — o'chirib qo'yamiz
+    await bot.delete_webhook(drop_pending_updates=False)
+    me = await bot.me()
+    logger.info("Bot ishga tushdi: @%s — Telegram'da aynan shu botga yozing", me.username)
     workers = [
         asyncio.create_task(run_broadcast_worker(bot)),
         asyncio.create_task(run_backup_worker()),

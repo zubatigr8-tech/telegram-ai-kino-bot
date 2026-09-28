@@ -5,14 +5,20 @@ import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
-with warnings.catch_warnings():
-    # shazamio ichidagi pydub ffmpeg'ni PATH'dan topa olmasa ogohlantiradi — bizga pydub kerak emas
-    warnings.simplefilter("ignore", RuntimeWarning)
-    from shazamio import Shazam
-
 from bot.media.ffmpeg import extract_clip
 
 logger = logging.getLogger(__name__)
+
+try:
+    with warnings.catch_warnings():
+        # shazamio ichidagi pydub ffmpeg'ni PATH'dan topa olmasa ogohlantiradi — bizga pydub kerak emas
+        warnings.simplefilter("ignore", RuntimeWarning)
+        from shazamio import Shazam
+except ImportError:
+    # shazamio'ning tayyor paketi faqat Python 3.9–3.12 uchun chiqarilgan. Yangiroq Python'da
+    # bot baribir ishlaydi: qo'shiq nomi platforma metama'lumotidan olinadi.
+    Shazam = None
+    logger.warning("shazamio o'rnatilmagan — qo'shiqni Shazam orqali aniqlash o'chirilgan (Python 3.12 tavsiya etiladi)")
 
 CLIP_SECONDS = 15
 
@@ -50,6 +56,8 @@ def _clip_offsets(duration: float | None) -> list[float]:
 
 
 async def recognize_song(video_path: Path, duration: float | None) -> Song | None:
+    if Shazam is None:
+        return None
     shazam = Shazam()
     for i, offset in enumerate(_clip_offsets(duration)):
         clip = video_path.with_name(f"clip_{i}.wav")

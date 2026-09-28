@@ -48,6 +48,10 @@ birga ishlatadi. Shu sababli **ikkalasini alohida terminalda** ishga tushirish k
 
 ## 1. O'rnatish
 
+> ⚠️ **Python 3.12** kerak. Qo'shiqni aniqlaydigan `shazamio` kutubxonasi Python 3.13 va undan
+> yangi versiyalarda o'rnatilmaydi. Tekshirish: `py --version`. Python 3.12 ni python.org dan
+> yoki `py install 3.12` buyrug'i bilan o'rnating va venv'ni `py -3.12 -m venv .venv` bilan yarating.
+
 ```bash
 cd telegram-ai-kino-bot
 python -m venv .venv

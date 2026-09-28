@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from admin_panel.auth import is_logged_in
 from admin_panel.templating import templates
 from shared.db.database import get_session
-from shared.db.models import BroadcastJob, Channel, MediaCache, Movie, SongCache, User
+from shared.db.models import BroadcastJob, Channel, MediaCache, SongCache, User
 
 router = APIRouter()
 
@@ -20,7 +20,6 @@ async def dashboard(request: Request):
         blocked_users = (
             await session.execute(select(func.count(User.tg_id)).where(User.is_blocked == True))  # noqa: E712
         ).scalar_one()
-        total_movies = (await session.execute(select(func.count(Movie.id)))).scalar_one()
         total_channels = (await session.execute(select(func.count(Channel.id)))).scalar_one()
         pending_jobs = (
             await session.execute(select(func.count(BroadcastJob.id)).where(BroadcastJob.status.in_(("pending", "sending"))))
@@ -38,7 +37,6 @@ async def dashboard(request: Request):
             "total_users": total_users,
             "active_users": total_users - blocked_users,
             "blocked_users": blocked_users,
-            "total_movies": total_movies,
             "total_channels": total_channels,
             "pending_jobs": pending_jobs,
             "total_sent": total_sent,

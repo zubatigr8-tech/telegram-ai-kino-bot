@@ -73,7 +73,7 @@ async def fetch_channel_info(bot: Bot, chat_ref: int | str) -> dict:
         invite_link = chat.invite_link
         if not invite_link:
             try:
-                link = await bot.create_chat_invite_link(chat.id, name="Kino bot")
+                link = await bot.create_chat_invite_link(chat.id, name="Video Downloader")
                 invite_link = link.invite_link
             except Exception:
                 raise ChannelError(

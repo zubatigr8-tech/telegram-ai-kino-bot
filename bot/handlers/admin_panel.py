@@ -1,5 +1,5 @@
 """Telegram ichidagi admin panel — faqat ADMIN_IDS'dagilar uchun.
-Veb-admin paneldagi asosiy bo'limlarni (statistika, foydalanuvchilar, kinolar,
+Veb-admin paneldagi asosiy bo'limlarni (statistika, foydalanuvchilar,
 kanallar, xabar yuborish) botning o'zida, inline tugmalar orqali boshqaradi."""
 import re
 from html import escape as h
@@ -17,21 +17,19 @@ from bot.channels import ChannelError, channel_url, clean_username, fetch_channe
 from bot.states import AdminFlow
 from shared.config import settings
 from shared.db.database import get_session
-from shared.db.models import BroadcastJob, Channel, MediaCache, Movie, SongCache, User
+from shared.db.models import BroadcastJob, Channel, MediaCache, SongCache, User
 
 router = Router(name="admin_panel")
 router.message.filter(F.from_user.id.in_(settings.ADMIN_IDS))
 router.callback_query.filter(F.from_user.id.in_(settings.ADMIN_IDS))
 
 USERS_PAGE_SIZE = 8
-MOVIES_PAGE_SIZE = 30
 
 
 def main_admin_kb():
     kb = InlineKeyboardBuilder()
     kb.button(text="📊 Statistika", callback_data="adm:stats")
     kb.button(text="👤 Foydalanuvchilar", callback_data="adm:users")
-    kb.button(text="🎬 Kinolar", callback_data="adm:movies")
     kb.button(text="📢 Kanallar", callback_data="adm:channels")
     kb.button(text="🔔 Xabar yuborish", callback_data="adm:broadcast")
     kb.adjust(1)
@@ -80,7 +78,6 @@ async def cb_stats(callback: CallbackQuery) -> None:
         blocked = (
             await session.execute(select(func.count(User.tg_id)).where(User.is_blocked == True))  # noqa: E712
         ).scalar_one()
-        total_movies = (await session.execute(select(func.count(Movie.id)))).scalar_one()
         total_channels = (await session.execute(select(func.count(Channel.id)))).scalar_one()
         pending = (
             await session.execute(
@@ -98,7 +95,6 @@ async def cb_stats(callback: CallbackQuery) -> None:
         f"👤 Jami foydalanuvchilar: <b>{total_users}</b>\n"
         f"✅ Faol: <b>{total_users - blocked}</b>\n"
         f"🚫 Bloklangan: <b>{blocked}</b>\n"
-        f"🎬 Kinolar soni: <b>{total_movies}</b>\n"
         f"📢 Majburiy kanallar: <b>{total_channels}</b>\n"
         f"⏳ Navbatdagi xabarlar: <b>{pending}</b>\n"
         f"📨 Jami yuborilgan xabarlar: <b>{total_sent}</b>\n"
@@ -153,173 +149,6 @@ async def cb_toggle_user(callback: CallbackQuery) -> None:
             await session.commit()
     await callback.answer("Holat o'zgartirildi ✅")
     await render_users(callback)
-
-
-# ---------- Kinolar ----------
-
-
-@router.callback_query(F.data == "adm:movies")
-async def cb_movies(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.clear()
-    async with get_session() as session:
-        result = await session.execute(select(Movie).order_by(Movie.code).limit(MOVIES_PAGE_SIZE))
-        movies = list(result.scalars().all())
-        total = (await session.execute(select(func.count(Movie.id)))).scalar_one()
-
-    if movies:
-        body = "\n".join(f"<b>{m.code}</b> — {h(m.title)}" for m in movies)
-    else:
-        body = "Hozircha kino qo'shilmagan."
-
-    text = f"🎬 <b>Kinolar</b> (jami: {total})\n\n{body}"
-    kb = InlineKeyboardBuilder()
-    kb.button(text="➕ Yangi kino qo'shish", callback_data="adm:m:add")
-    kb.button(text="🗑 Kino o'chirish", callback_data="adm:m:del")
-    kb.button(text="⬅️ Orqaga", callback_data="adm:menu")
-    kb.adjust(1)
-    await callback.message.edit_text(text, reply_markup=kb.as_markup())
-    await callback.answer()
-
-
-@router.callback_query(F.data == "adm:m:add")
-async def cb_add_movie_start(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(AdminFlow.add_movie_file)
-    await callback.message.edit_text(
-        "🎬 <b>Yangi kino qo'shish</b>\n\nAvval kino videosi yoki faylini yuboring.",
-        reply_markup=cancel_kb(),
-    )
-    await callback.answer()
-
-
-@router.message(AdminFlow.add_movie_file, F.video | F.document)
-async def add_movie_receive_file(message: Message, state: FSMContext) -> None:
-    if message.video:
-        file_id, file_type = message.video.file_id, "video"
-    else:
-        file_id, file_type = message.document.file_id, "document"
-    await state.update_data(file_id=file_id, file_type=file_type)
-    await state.set_state(AdminFlow.add_movie_code)
-    await message.answer("Endi kino kodini (raqam) yuboring:", reply_markup=cancel_kb())
-
-
-@router.message(AdminFlow.add_movie_file)
-async def add_movie_wrong_file(message: Message) -> None:
-    await message.answer("Iltimos, video yoki fayl yuboring.", reply_markup=cancel_kb())
-
-
-@router.message(AdminFlow.add_movie_code, F.text.regexp(r"^\d{1,9}$"))
-async def add_movie_receive_code(message: Message, state: FSMContext) -> None:
-    code = int(message.text)
-    async with get_session() as session:
-        existing = await session.execute(select(Movie).where(Movie.code == code))
-        if existing.scalar_one_or_none() is not None:
-            await message.answer(f"⚠️ Kod {code} band. Boshqa raqam yuboring:", reply_markup=cancel_kb())
-            return
-    await state.update_data(code=code)
-    await state.set_state(AdminFlow.add_movie_title)
-    await message.answer("Kino nomini yuboring:", reply_markup=cancel_kb())
-
-
-@router.message(AdminFlow.add_movie_code)
-async def add_movie_wrong_code(message: Message) -> None:
-    await message.answer("Iltimos, faqat raqam yuboring (ko'pi bilan 9 xonali).", reply_markup=cancel_kb())
-
-
-@router.message(AdminFlow.add_movie_title, F.text)
-async def add_movie_receive_title(message: Message, state: FSMContext) -> None:
-    await state.update_data(title=message.text.strip()[:255])
-    await state.set_state(AdminFlow.add_movie_description)
-    await message.answer('Tavsif yuboring (yoki "-" deb yozib o\'tkazib yuboring):', reply_markup=cancel_kb())
-
-
-@router.message(AdminFlow.add_movie_description, F.text)
-async def add_movie_receive_description(message: Message, state: FSMContext) -> None:
-    data = await state.get_data()
-    description = None if message.text.strip() == "-" else message.text
-
-    async with get_session() as session:
-        session.add(
-            Movie(
-                code=data["code"],
-                title=data["title"],
-                description=description,
-                file_id=data["file_id"],
-                file_type=data["file_type"],
-            )
-        )
-        try:
-            await session.commit()
-        except IntegrityError:
-            # Shu orada kod boshqa joyda (masalan veb-panelda) band qilingan
-            await session.rollback()
-            await state.set_state(AdminFlow.add_movie_code)
-            await message.answer(
-                f"⚠️ Kod {data['code']} band bo'lib qoldi. Boshqa kod yuboring:", reply_markup=cancel_kb()
-            )
-            return
-
-    await state.clear()
-    await message.answer(
-        f"✅ Kino qo'shildi!\n\n🎬 <b>{h(data['title'])}</b> — kod: <b>{data['code']}</b>",
-        reply_markup=main_admin_kb(),
-    )
-
-
-@router.callback_query(F.data == "adm:m:del")
-async def cb_delete_movie_start(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(AdminFlow.delete_movie_code)
-    await callback.message.edit_text(
-        "🗑 <b>Kino o'chirish</b>\n\nO'chirish uchun kino kodini (raqamini) yuboring.",
-        reply_markup=cancel_kb(),
-    )
-    await callback.answer()
-
-
-@router.message(AdminFlow.delete_movie_code, F.text.regexp(r"^\d{1,9}$"))
-async def delete_movie_receive_code(message: Message, state: FSMContext) -> None:
-    code = int(message.text)
-    async with get_session() as session:
-        result = await session.execute(select(Movie).where(Movie.code == code))
-        movie = result.scalar_one_or_none()
-
-    if movie is None:
-        await message.answer(f"❌ {code} raqamli kino topilmadi. Boshqa kod yuboring:", reply_markup=cancel_kb())
-        return
-
-    await state.update_data(movie_id=movie.id, movie_title=movie.title, movie_code=movie.code)
-    kb = InlineKeyboardBuilder()
-    kb.button(text="✅ Ha, o'chirilsin", callback_data="adm:m:del:confirm")
-    kb.button(text="❌ Bekor qilish", callback_data="adm:cancel")
-    kb.adjust(1)
-    await message.answer(
-        f"🎬 <b>{h(movie.title)}</b> (kod: {movie.code})\n\nRostdan ham o'chirilsinmi?",
-        reply_markup=kb.as_markup(),
-    )
-
-
-@router.message(AdminFlow.delete_movie_code)
-async def delete_movie_wrong_code(message: Message) -> None:
-    await message.answer("Iltimos, faqat kino kodini (raqam) yuboring.", reply_markup=cancel_kb())
-
-
-@router.callback_query(F.data == "adm:m:del:confirm")
-async def cb_delete_movie_confirm(callback: CallbackQuery, state: FSMContext) -> None:
-    data = await state.get_data()
-    movie_id = data.get("movie_id")
-
-    async with get_session() as session:
-        movie = await session.get(Movie, movie_id) if movie_id else None
-        if movie:
-            await session.delete(movie)
-            await session.commit()
-
-    await state.clear()
-    if movie:
-        text = f"✅ <b>{h(data['movie_title'])}</b> (kod: {data['movie_code']}) o'chirildi."
-    else:
-        text = "⚠️ Kino topilmadi, ehtimol allaqachon o'chirilgan."
-    await callback.message.edit_text(text, reply_markup=back_kb())
-    await callback.answer()
 
 
 # ---------- Kanallar ----------

@@ -13,7 +13,7 @@ from aiogram.types import ErrorEvent
 
 from bot.backup_worker import run_backup_worker
 from bot.broadcast_worker import run_broadcast_worker
-from bot.handlers import admin_panel, admin_tools, media, movie, start
+from bot.handlers import admin_panel, admin_tools, fallback, media, start
 from bot.middlewares import SubscriptionMiddleware, UserMiddleware
 from shared.config import settings
 from shared.db.database import init_db
@@ -66,12 +66,12 @@ async def main() -> None:
         return True
 
     # Tartib muhim: admin_panel va admin_tools birinchi bo'lishi kerak, aks holda
-    # adminning /admin oqimi yoki video/fayllari oddiy foydalanuvchi handlerlariga tushib qoladi.
+    # adminning /admin oqimi oddiy foydalanuvchi handlerlariga tushib qoladi.
     dp.include_router(admin_panel.router)
     dp.include_router(admin_tools.router)
     dp.include_router(start.router)
     dp.include_router(media.router)  # Instagram / YouTube / TikTok havolalari
-    dp.include_router(movie.router)  # oxirgi bo'lishi kerak: unda qolgan barcha xabarlar uchun yo'riqnoma bor
+    dp.include_router(fallback.router)  # oxirgi bo'lishi kerak: qolgan barcha xabarlar uchun yo'riqnoma
 
     # Telegram serveriga ulanishni tekshiramiz: ulanib bo'lmasa, bot jimgina osilib qolmasin
     logger.info("Telegram serveriga ulanilmoqda (api.telegram.org)...")

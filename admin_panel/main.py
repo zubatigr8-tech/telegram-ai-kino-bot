@@ -6,14 +6,14 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from admin_panel.auth import check_credentials
-from admin_panel.routers import broadcast, channels, dashboard, movies, users
+from admin_panel.routers import broadcast, channels, dashboard, users
 from admin_panel.templating import STATIC_DIR, templates
 from shared.config import settings
 from shared.db.database import init_db
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Kino Bot Admin Panel")
+app = FastAPI(title="Video Downloader Admin Panel")
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.ADMIN_PANEL_SECRET_KEY,
@@ -24,7 +24,6 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(dashboard.router)
 app.include_router(users.router)
-app.include_router(movies.router)
 app.include_router(channels.router)
 app.include_router(broadcast.router)
 

@@ -1,8 +1,8 @@
-# 🤖 Video Downloader — video, qo'shiq va kino topuvchi Telegram bot
+# 📥 Video Downloader — Telegram bot
 
 **Video Downloader** — Instagram, YouTube va TikTok havolasidan videoni yuklab beradigan,
-videodagi qo'shiqni aniqlab (Shazam), uning to'liq versiyasini MP3/M4A qilib
-yuboradigan bot. Shuningdek, kino kodi bo'yicha kino topib beradi.
+videodagi qo'shiqni aniqlab (Shazam), uning to'liq versiyasini audio qilib yuboradigan bot.
+(Repozitoriy nomi tarixan `telegram-ai-kino-bot` bo'lib qolgan.)
 
 > Bot nomi: **Video Downloader**. @BotFather → `/newbot` → nom: `Video Downloader`,
 > username (oxiri `bot` bilan tugashi shart, noyob bo'lishi kerak), masalan:
@@ -17,7 +17,6 @@ yuboradigan bot. Shuningdek, kino kodi bo'yicha kino topib beradi.
    2. 🎵 videodagi qo'shiqni Shazam orqali aniqlaydi (topilmasa — platforma ko'rsatgan qo'shiq nomidan)
    3. 🎧 qo'shiqning to'liq versiyasini YouTube'dan topib, audio qilib yuboradi (Shazam / YouTube tugmalari bilan)
    4. qo'shiq aniqlanmasa — videoning o'z ovozi MP3 qilib yuboriladi
-4. Yoki **kino kodini** (raqam) yuboradi → bot kinoni yuboradi
 
 ## Imkoniyatlar
 
@@ -25,10 +24,9 @@ yuboradigan bot. Shuningdek, kino kodi bo'yicha kino topib beradi.
 - 🎵 Videodagi qo'shiqni aniqlash (Shazam, API kalit shart emas) va to'liq qo'shiqni yuborish
 - ⚡ Kesh: bir xil havola yoki qo'shiq qayta so'ralsa — qayta yuklamasdan darhol yuboriladi
 - 🚦 Navbat: bir vaqtda `MAX_CONCURRENT_DOWNLOADS` tadan ortiq yuklash bo'lmaydi, har bir foydalanuvchi bittadan havola
-- 🎬 Kino kodi (raqam) orqali video/fayl topib berish
 - 📢 Majburiy kanal obunasini tekshirish
 - 👤 Foydalanuvchilarni bazada saqlash, bloklash
-- ⚙️ Alohida veb-admin panel (statistika, foydalanuvchilar, kinolar, kanallar, xabar yuborish)
+- ⚙️ Alohida veb-admin panel (statistika, foydalanuvchilar, kanallar, xabar yuborish)
 - 📱 Xuddi shu boshqaruv botning o'zida ham — `/admin` buyrug'i (faqat adminlarga ko'rinadi)
 - 🔔 Barcha foydalanuvchilarga avtomatik xabar yuborish (broadcast)
 
@@ -99,20 +97,9 @@ Admin panel ochiladi: **http://localhost:8000** (login/parolni `.env`dagi
 
 Veb-panelga qo'shimcha ravishda, `ADMIN_IDS`dagi foydalanuvchilar botning o'zida
 **`/admin`** buyrug'i orqali ham boshqarishlari mumkin: statistika, foydalanuvchilar
-(bloklash), kinolar (ko'rish + qo'shish), kanallar (qo'shish/o'chirish) va xabar
+(bloklash), kanallar (qo'shish/o'chirish) va xabar
 yuborish — hammasi inline tugmalar orqali. Oddiy foydalanuvchilarga bu buyruq
 umuman ko'rinmaydi.
-
-## 6. Kino qo'shish tartibi
-
-**Veb-panel orqali:**
-1. Botga (admin sifatida, `ADMIN_IDS`da bo'lgan holda) kino videosini yoki faylini yuboring.
-2. Bot javob qaytaradi: `file_id` va turi (`video`/`document`).
-3. Admin panel → **🎬 Kinolar** → shu `file_id`ni, kodni (masalan `7`), nomini kiritib qo'shing.
-4. Foydalanuvchi botga `7` deb yozganda — shu kino avtomatik yuboriladi.
-
-**Yoki bot ichidan:** `/admin` → **🎬 Kinolar** → **➕ Yangi kino qo'shish** — bot
-video, kod, nom va tavsifni ketma-ket so'raydi, `file_id`ni qo'lda ko'chirish shart emas.
 
 ## 7. Majburiy kanal obunasi
 
@@ -182,4 +169,9 @@ Hech narsa qo'shimcha o'rnatish shart emas: `yt-dlp`, `shazamio` va `imageio-ffm
 
 - Ko'p tilli interfeys
 - SQLite o'rniga PostgreSQL (`DATABASE_URL`ni almashtirish kifoya)
-- Kino kategoriyalari/qidiruv nom bo'yicha
+
+## Foydali buyruqlar (faqat adminlar uchun)
+
+- `/admin` — bot ichidagi admin panel
+- `/server` — bot qayerda ishlayotganini ko'rsatadi (☁️ Railway yoki 🖥️ kompyuter)
+- `/myid` — Telegram ID'ingiz (hamma uchun)

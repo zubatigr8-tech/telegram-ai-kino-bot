@@ -1,5 +1,9 @@
 """/myid — hamma uchun (ID bilish, ADMIN_IDS'ga qo'shilish uchun kerak).
-Video/fayl file_id'sini olish, kanal chat_id'sini aniqlash — faqat ADMIN_IDS'dagilar uchun."""
+Kanal chat_id'sini aniqlash (kanaldan forward) — faqat ADMIN_IDS'dagilar uchun."""
+import datetime
+import os
+import platform
+
 from aiogram import F, Router
 from aiogram.enums import MessageOriginType
 from aiogram.filters import Command
@@ -10,25 +14,24 @@ from shared.config import settings
 router = Router(name="admin_tools")
 
 
+_STARTED_AT = datetime.datetime.now(datetime.timezone.utc)
+
+
+@router.message(Command("server"), F.from_user.id.in_(settings.ADMIN_IDS))
+async def server_info(message: Message) -> None:
+    """Bot qayerda ishlayotganini ko'rsatadi: Railway (hosting) yoki kompyuter."""
+    if os.environ.get("RAILWAY_ENVIRONMENT_NAME") or os.environ.get("RAILWAY_SERVICE_ID"):
+        where = "☁️ <b>Railway hostingida</b> ishlayapti"
+    else:
+        where = f"🖥️ <b>Kompyuterda</b> ishlayapti ({platform.system()})"
+    uptime = datetime.datetime.now(datetime.timezone.utc) - _STARTED_AT
+    hours, rest = divmod(int(uptime.total_seconds()), 3600)
+    await message.answer(f"{where}\n⏱ Ishga tushganiga: {hours} soat {rest // 60} daqiqa")
+
+
 @router.message(Command("myid"))
 async def my_id(message: Message) -> None:
     await message.answer(f"Sizning Telegram ID'ingiz: <code>{message.from_user.id}</code>")
-
-
-@router.message(F.video, F.from_user.id.in_(settings.ADMIN_IDS))
-async def get_video_file_id(message: Message) -> None:
-    await message.answer(
-        "✅ Video qabul qilindi. Admin panelda kino qo'shishda shu file_id'ni ishlating:\n\n"
-        f"<code>{message.video.file_id}</code>\n\n(turi: video)"
-    )
-
-
-@router.message(F.document, F.from_user.id.in_(settings.ADMIN_IDS))
-async def get_document_file_id(message: Message) -> None:
-    await message.answer(
-        "✅ Fayl qabul qilindi. Admin panelda kino qo'shishda shu file_id'ni ishlating:\n\n"
-        f"<code>{message.document.file_id}</code>\n\n(turi: document)"
-    )
 
 
 @router.message(F.forward_origin, F.from_user.id.in_(settings.ADMIN_IDS))

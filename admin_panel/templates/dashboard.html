@@ -1,12 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Statistika — Kino Bot Admin{% endblock %}
+{% block title %}Statistika — Video Downloader Admin{% endblock %}
 {% block content %}
 <h2>📊 Statistika</h2>
 <div class="card-grid">
   <div class="stat-card"><div class="value">{{ total_users }}</div><div class="label">Jami foydalanuvchilar</div></div>
   <div class="stat-card"><div class="value">{{ active_users }}</div><div class="label">Faol foydalanuvchilar</div></div>
   <div class="stat-card"><div class="value">{{ blocked_users }}</div><div class="label">Bloklangan</div></div>
-  <div class="stat-card"><div class="value">{{ total_movies }}</div><div class="label">Kinolar soni</div></div>
   <div class="stat-card"><div class="value">{{ total_channels }}</div><div class="label">Majburiy kanallar</div></div>
   <div class="stat-card"><div class="value">{{ pending_jobs }}</div><div class="label">Yuborilayotgan xabarlar</div></div>
   <div class="stat-card"><div class="value">{{ total_sent }}</div><div class="label">Jami yuborilgan xabarlar</div></div>

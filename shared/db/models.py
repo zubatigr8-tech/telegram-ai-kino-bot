@@ -24,18 +24,6 @@ class User(Base):
     last_active: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class Movie(Base):
-    __tablename__ = "movies"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    code: Mapped[int] = mapped_column(Integer, unique=True, index=True)
-    title: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    file_id: Mapped[str] = mapped_column(String(255))
-    file_type: Mapped[str] = mapped_column(String(20), default="video")  # video | document
-    added_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-
-
 class Channel(Base):
     __tablename__ = "channels"
 

@@ -162,6 +162,18 @@ Hech narsa qo'shimcha o'rnatish shart emas: `yt-dlp`, `shazamio` va `imageio-ffm
   `pip install -U yt-dlp`.
 - Yopiq (private) videolarni yuklab bo'lmaydi.
 
+## 11. Railway'ga joylash (24/7 ishlashi uchun)
+
+1. railway.com → GitHub bilan kiring → **New Project → Deploy from GitHub repo** → shu repozitoriy.
+2. Servis → **Settings → Source → Branch** — kodi bor branchni tanlang.
+3. Servis → **Variables** → quyidagilarni qo'shing:
+   `BOT_TOKEN`, `ADMIN_IDS`, `ADMIN_PANEL_USERNAME`, `ADMIN_PANEL_PASSWORD`, `ADMIN_PANEL_SECRET_KEY`,
+   `DATABASE_URL=sqlite+aiosqlite:////data/bot_database.db`, `BACKUP_DIR=/data/backups`,
+   ixtiyoriy: `COOKIES_TEXT` (cookies.txt ichidagi matn).
+4. Servis ustida o'ng tugma → **Attach Volume** → Mount path: `/data` (baza qayta joylashda o'chib ketmasligi uchun).
+5. **Settings → Networking → Generate Domain** — admin panel manzili.
+6. ⚠️ Kompyuteringizdagi botni o'chiring: bitta token bilan ikki joyda ishlasa, `Conflict` xatosi chiqadi.
+
 ## Kengaytirish g'oyalari
 
 - Qo'shiq nomini matn bilan yozib qidirish (`/music Believer`)

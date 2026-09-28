@@ -38,6 +38,8 @@ class Settings:
     # Instagram/YouTube ba'zan login so'raydi — shunda brauzerdan eksport qilingan
     # cookies.txt (Netscape formatida) yo'lini ko'rsating. Ixtiyoriy.
     COOKIES_FILE: str = os.getenv("COOKIES_FILE", "")
+    # Hostingda fayl yuklab bo'lmaydi — cookies.txt ning ICHIDAGI matnini shu o'zgaruvchiga qo'yish mumkin
+    COOKIES_TEXT: str = os.getenv("COOKIES_TEXT", "")
     # Kompyuter/server Telegram yoki YouTube'ga to'g'ridan-to'g'ri ulana olmasa — proksi.
     # Masalan: socks5://127.0.0.1:1080 yoki http://user:pass@host:port. Ixtiyoriy.
     PROXY_URL: str = os.getenv("PROXY_URL", "").strip()

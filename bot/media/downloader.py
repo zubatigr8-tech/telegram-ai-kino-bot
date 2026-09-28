@@ -81,9 +81,40 @@ def _base_opts(outdir: Path) -> dict:
     proxy = getattr(settings, "PROXY_URL", "")
     if proxy:
         opts["proxy"] = proxy
-    if settings.COOKIES_FILE and os.path.exists(settings.COOKIES_FILE):
-        opts["cookiefile"] = settings.COOKIES_FILE
+    cookie_file = _cookie_file()
+    if cookie_file:
+        opts["cookiefile"] = cookie_file
     return opts
+
+
+_env_cookie_path: str | None = None
+
+
+def _cookie_file() -> str | None:
+    """COOKIES_FILE (fayl) yoki COOKIES_TEXT (hostingdagi o'zgaruvchi matni) dan cookies fayli yo'li."""
+    global _env_cookie_path
+    if settings.COOKIES_FILE and os.path.exists(settings.COOKIES_FILE):
+        return settings.COOKIES_FILE
+    text = getattr(settings, "COOKIES_TEXT", "")
+    if not text:
+        return None
+    if _env_cookie_path is None:
+        lines = ["# Netscape HTTP Cookie File"]
+        for line in text.replace("\\n", "\n").splitlines():
+            line = line.strip()
+            if not line or line.startswith("# "):
+                continue
+            if "\t" not in line and not line.startswith("#"):
+                # Nusxalashda tab belgilari bo'sh joyga aylangan bo'lishi mumkin — qayta tiklaymiz
+                parts = line.split(None, 6)
+                if len(parts) == 7:
+                    line = "\t".join(parts)
+            lines.append(line)
+        path = Path(settings.DOWNLOAD_DIR) / "cookies_from_env.txt"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        _env_cookie_path = str(path)
+    return _env_cookie_path
 
 
 def _first_entry(info: dict) -> dict:

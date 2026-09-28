@@ -1,9 +1,11 @@
 import asyncio
 import logging
+import socket
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.session.middlewares.base import BaseRequestMiddleware
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramNetworkError, TelegramUnauthorizedError
@@ -20,6 +22,20 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(
 logger = logging.getLogger(__name__)
 
 
+class RetryMiddleware(BaseRequestMiddleware):
+    """Internet vaqtincha uzilsa (Windows'da "semaphore timeout" kabi), so'rovni 3 martagacha qaytaradi."""
+
+    async def __call__(self, make_request, bot, method):
+        for attempt in range(3):
+            try:
+                return await make_request(bot, method)
+            except TelegramNetworkError as exc:
+                if attempt == 2:
+                    raise
+                logger.warning("Telegram'ga ulanishda uzilish (%s), qayta urinilmoqda...", exc)
+                await asyncio.sleep(2)
+
+
 async def main() -> None:
     if not settings.BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN .env faylida topilmadi. @BotFather'dan olib, .env ga qo'shing.")
@@ -29,6 +45,10 @@ async def main() -> None:
     # 300 soniya: katta videoni sekin internetda yuklash standart 60 soniyaga sig'masligi mumkin
     proxy = getattr(settings, "PROXY_URL", "") or None
     session = AiohttpSession(proxy=proxy, timeout=300)
+    if proxy is None:
+        # Ba'zi tarmoqlarda IPv6 ishlamaydi va ulanish uzoq kutib uziladi — faqat IPv4 ishlatamiz
+        session._connector_init["family"] = socket.AF_INET
+    session.middleware(RetryMiddleware())
     bot = Bot(token=settings.BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
 

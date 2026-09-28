@@ -3,8 +3,10 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.exceptions import TelegramNetworkError, TelegramUnauthorizedError
 from aiogram.types import ErrorEvent
 
 from bot.backup_worker import run_backup_worker
@@ -24,7 +26,8 @@ async def main() -> None:
 
     await init_db()
 
-    bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    session = AiohttpSession(proxy=settings.PROXY_URL) if settings.PROXY_URL else AiohttpSession()
+    bot = Bot(token=settings.BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
 
     # Outer — handler topilmasa ham ishlaydi (foydalanuvchini ro'yxatga olish, blok tekshiruvi)
@@ -48,10 +51,23 @@ async def main() -> None:
     dp.include_router(media.router)  # Instagram / YouTube / TikTok havolalari
     dp.include_router(movie.router)  # oxirgi bo'lishi kerak: unda qolgan barcha xabarlar uchun yo'riqnoma bor
 
-    # Token boshqa joyda webhook bilan ishlatilgan bo'lsa, polling xabarlarni olmaydi — o'chirib qo'yamiz
-    await bot.delete_webhook(drop_pending_updates=False)
-    me = await bot.me()
-    logger.info("Bot ishga tushdi: @%s — Telegram'da aynan shu botga yozing", me.username)
+    # Telegram serveriga ulanishni tekshiramiz: ulanib bo'lmasa, bot jimgina osilib qolmasin
+    logger.info("Telegram serveriga ulanilmoqda (api.telegram.org)...")
+    try:
+        me = await asyncio.wait_for(bot.me(), timeout=30)
+        # Token boshqa joyda webhook bilan ishlatilgan bo'lsa, polling xabarlarni olmaydi — o'chirib qo'yamiz
+        await asyncio.wait_for(bot.delete_webhook(drop_pending_updates=False), timeout=30)
+    except (asyncio.TimeoutError, TelegramNetworkError) as exc:
+        await bot.session.close()
+        raise SystemExit(
+            f"\n❌ Telegram serveriga (api.telegram.org) ulanib bo'lmadi: {type(exc).__name__}\n"
+            "   Internetingiz Telegram API'ni to'sayotgan bo'lishi mumkin.\n"
+            "   Yechim: kompyuterda VPN yoqing yoki .env faylida PROXY_URL ni ko'rsating, so'ng botni qayta ishga tushiring."
+        )
+    except TelegramUnauthorizedError:
+        await bot.session.close()
+        raise SystemExit("\n❌ BOT_TOKEN noto'g'ri yoki bekor qilingan. @BotFather → /mybots → API Token'dan yangisini oling.")
+    logger.info("✅ Bot ishga tushdi: @%s — Telegram'da aynan shu botga yozing", me.username)
     workers = [
         asyncio.create_task(run_broadcast_worker(bot)),
         asyncio.create_task(run_backup_worker()),

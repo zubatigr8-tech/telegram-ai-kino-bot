@@ -14,7 +14,7 @@ HOW_TO_TEXT = (
     "🎬 Kino olish uchun kino kodini (raqamini) yuboring, masalan: <b>7</b>"
 )
 
-WELCOME_TEXT = "Assalomu alaykum! 👋 Men <b>Topqir AI</b> — video va qo'shiq topuvchi yordamchingizman.\n\n" + HOW_TO_TEXT
+WELCOME_TEXT = "Assalomu alaykum! 👋 Men <b>Video Downloader</b> botman — video va qo'shiqlarni topib beraman.\n\n" + HOW_TO_TEXT
 
 
 @router.message(CommandStart())

@@ -1,11 +1,12 @@
-# 🤖 Topqir AI — video, qo'shiq va kino topuvchi Telegram bot
+# 🤖 Video Downloader — video, qo'shiq va kino topuvchi Telegram bot
 
-**Topqir AI** — Instagram, YouTube va TikTok havolasidan videoni yuklab beradigan,
+**Video Downloader** — Instagram, YouTube va TikTok havolasidan videoni yuklab beradigan,
 videodagi qo'shiqni aniqlab (Shazam), uning to'liq versiyasini MP3/M4A qilib
 yuboradigan bot. Shuningdek, kino kodi bo'yicha kino topib beradi.
 
-> Tavsiya etilgan bot nomi: **Topqir AI**, username: `@TopqirAIbot`
-> (band bo'lsa: `@TopqirAI_bot`, `@TopqirUzBot`). @BotFather → `/newbot`.
+> Bot nomi: **Video Downloader**. @BotFather → `/newbot` → nom: `Video Downloader`,
+> username (oxiri `bot` bilan tugashi shart, noyob bo'lishi kerak), masalan:
+> `@VideoDownloaderUzBot`, `@UzVideoDownloaderBot`, `@VideoDownloader_Uz_bot`.
 
 ## Foydalanuvchi uchun oqim
 

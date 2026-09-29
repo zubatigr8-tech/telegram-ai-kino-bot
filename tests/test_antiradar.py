@@ -302,3 +302,20 @@ def test_official_radar_list_format(tmp_path):
                "Andijon;Statsionar radar;40,580948;72,618520\n"
     points, errors = parse_file("list.csv", csv_text.encode("utf-8"))
     assert [(p.kind, p.lat) for p in points] == [("fixed", 40.580948)] and errors == []
+
+
+# --- OSM qamrovini o'lchash ---
+
+def test_coverage_compare():
+    from antiradar.coverage import compare
+    from antiradar.file_import import ParsedPoint
+
+    ref = [
+        ParsedPoint(40.5, 72.3, "fixed", None, None),
+        ParsedPoint(40.6, 72.4, "fixed", None, None),
+    ]
+    osm = [(40.5 + 50 * M, 72.3)]  # birinchisidan 50 m
+    result = compare(ref, osm, radius_m=100)
+    assert (result.matched, result.total, round(result.percent)) == (1, 2, 50)
+    assert result.unmatched[0][0].lat == 40.6
+    assert compare(ref, [], 100).percent == 0

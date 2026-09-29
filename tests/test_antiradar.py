@@ -207,7 +207,7 @@ def test_voice_text_uses_threshold_not_exact_distance():
     cam = CameraPoint(id=1, lat=0, lon=0, kind="fixed", speed_limit=60)
     alert = Alert(camera=cam, distance_m=437.2, threshold_m=500, overspeed=True)
     text = alert_voice_text("uz", alert)
-    assert text == "Diqqat! 500 metrdan keyin Tezlik kamerasi. Tezlik chegarasi 60. Tezlikni kamaytiring!"
+    assert text == "Diqqat! 500 metrdan keyin Tezlik radari. Tezlik chegarasi 60. Tezlikni kamaytiring!"
 
 
 # --- Yo'l belgilari ---
@@ -262,9 +262,43 @@ def test_csv_import_parsing():
         (41.311, 69.279, "fixed", 60),
         (41.2, 69.1, "crossing", None),
     ]
-    assert len(errors) == 2
+    assert len(errors) == 1  # "ufo" turi; "abc" qatori koordinatasiz — jimgina o'tkaziladi
 
 
 def test_csv_without_coordinates():
     points, errors = parse_csv("name,city\nx,y\n")
     assert points == [] and errors
+
+
+def test_official_radar_list_format(tmp_path):
+    """Rasmiy fotoradarlar ro'yxati: filtr qatori, ko'p tilli sarlavha, Excel formati."""
+    from openpyxl import Workbook
+
+    from antiradar.file_import import map_kind, parse_file
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["REGION", "DISTRICT", "LOCATION", "A TYPE", "LATITUDE", "LONGITUDE"])
+    ws.append(["Viloyat / Область / Region", "Tuman / Район / District", "Joylashgan joyi / Место расположения / Location",
+               "Turi / Тип / A type", "Kenglik / Широта / Latitude", "Uzunlik / Долгота / Longitude"])
+    ws.append(["Andijon viloyati", "MARXAMAT TUMANI", "D 140 ... 40 KM", "Statsionar kamera", 40.502213, 72.332896])
+    ws.append(["Andijon viloyati", "MARXAMAT TUMANI", "D087 ... 58 KM", "Statsionar radar", "40.505859", "72.318337"])
+    ws.append(["Andijon viloyati", "MARXAMAT TUMANI", "D140 34 KM", "Intellektual + radar", 40.538667, 72.346440])
+    path = tmp_path / "radars.xlsx"
+    wb.save(path)
+
+    points, errors = parse_file("Radars.XLSX", path.read_bytes())
+    assert errors == []
+    assert [(p.kind, p.lat, p.lon) for p in points] == [
+        ("camera", 40.502213, 72.332896),
+        ("fixed", 40.505859, 72.318337),
+        ("smart", 40.538667, 72.34644),
+    ]
+    assert map_kind("Стационарный радар") == "fixed"
+    assert map_kind("НЛО") is None
+
+    # Xuddi shu jadval CSV ko'rinishida ham
+    csv_text = "Viloyat / Область / Region;Turi / Тип / A type;Kenglik / Широта / Latitude;Uzunlik / Долгота / Longitude\n" \
+               "Andijon;Statsionar radar;40,580948;72,618520\n"
+    points, errors = parse_file("list.csv", csv_text.encode("utf-8"))
+    assert [(p.kind, p.lat) for p in points] == [("fixed", 40.580948)] and errors == []

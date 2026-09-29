@@ -8,7 +8,7 @@
   "speed_limit_line": "🚦 Tezlik chegarasi: <b>{limit} km/soat</b>",
   "overspeed_line": "🔴 Tezligingiz <b>{speed} km/soat</b> — sekinlashing!",
   "personal_overspeed": "🔴 Tezligingiz <b>{speed} km/soat</b> — o'zingiz belgilagan {limit} km/soat chegarasidan oshdi.",
-  "kind_fixed": "Tezlik kamerasi",
+  "kind_fixed": "Tezlik radari",
   "kind_mobile": "Mobil radar",
   "kind_red_light": "Svetofor kamerasi",
   "kind_average": "O'rtacha tezlik kamerasi",
@@ -46,5 +46,7 @@
   "kind_children": "Ehtiyot bo'ling, bolalar",
   "btn_signs": "🪧 Yo'l belgilari: {state}",
   "state_on": "yoqilgan",
-  "state_off": "o'chirilgan"
+  "state_off": "o'chirilgan",
+  "kind_camera": "Statsionar kamera",
+  "kind_smart": "Intellektual kamera va radar"
 }

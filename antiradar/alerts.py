@@ -13,7 +13,7 @@ from antiradar.geo import angle_diff, bearing_deg, distance_m
 
 # Radarlar/kameralar va yo'l belgilari. Belgilar ko'p (ayniqsa shaharda), shuning uchun ular
 # faqat bir marta, yaqinroqda aytiladi.
-RADAR_KINDS = ("fixed", "mobile", "red_light", "average", "police")
+RADAR_KINDS = ("fixed", "camera", "smart", "mobile", "red_light", "average", "police")
 SIGN_KINDS = ("speed_limit", "crossing", "stop", "give_way", "speed_bump", "railway_crossing", "children")
 ALERT_THRESHOLDS_M = (500, 200)  # radarlar uchun, kattadan kichikka
 SIGN_THRESHOLDS_M = (150,)

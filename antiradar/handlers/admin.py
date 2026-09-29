@@ -2,7 +2,8 @@
 - /stats — statistika;
 - oddiy (jonli emas) joylashuv yuborish → shu nuqtaga kamera yoki yo'l belgisi qo'shish;
 - /delcam <id> — kamerani o'chirish;
-- .csv fayl yuborish — tayyor ro'yxatdan radar/belgilarni yuklash (antiradar/file_import.py);
+- .xlsx / .csv fayl yuborish — tayyor ro'yxatdan (masalan rasmiy fotoradarlar ro'yxati) yuklash;
+- /clear_imported — fayldan yuklanganlarni o'chirish (yangilangan ro'yxatni qayta yuklashdan oldin);
 - /osm — OpenStreetMap'dan hozir yangilash (bot buni har kuni o'zi ham qiladi)."""
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandObject
@@ -12,7 +13,7 @@ from sqlalchemy import func, or_, select
 from antiradar.alerts import RADAR_KINDS, SIGN_KINDS
 from antiradar.config import settings
 from antiradar.db import Camera, Payment, User, get_session, utcnow
-from antiradar.file_import import parse_csv, save_points
+from antiradar.file_import import clear_imported, parse_file, save_points
 from antiradar.osm_import import import_country
 
 router = Router(name="admin")
@@ -20,8 +21,10 @@ router.message.filter(F.from_user.id.in_(settings.ADMIN_IDS))
 router.callback_query.filter(F.from_user.id.in_(settings.ADMIN_IDS))
 
 KINDS = {
-    "fixed": "📷 Kamera",
-    "mobile": "📡 Mobil radar",
+    "fixed": "📡 Statsionar radar",
+    "camera": "📷 Statsionar kamera",
+    "smart": "🧠 Intellektual + radar",
+    "mobile": "🚓 Mobil radar",
     "red_light": "🚦 Svetofor",
     "average": "📏 O'rtacha tezlik",
     "police": "👮 YPX posti",
@@ -35,7 +38,7 @@ KINDS = {
     "children": "🧒 Bolalar",
 }
 # Faqat shu turlarda tezlik chegarasi so'raladi, qolganlari darhol qo'shiladi
-KINDS_WITH_LIMIT = {"fixed", "mobile", "red_light", "average", "police", "speed_limit"}
+KINDS_WITH_LIMIT = {"fixed", "camera", "smart", "mobile", "red_light", "average", "police", "speed_limit"}
 LIMITS = (40, 50, 60, 70, 80, 90, 100, 0)
 
 
@@ -135,23 +138,43 @@ async def cmd_delcam(message: Message, command: CommandObject) -> None:
 MAX_CSV_BYTES = 5 * 1024 * 1024
 
 
-@router.message(F.document.file_name.lower().endswith(".csv"))
-async def import_csv(message: Message, bot: Bot) -> None:
-    if message.document.file_size and message.document.file_size > MAX_CSV_BYTES:
-        await message.answer("Fayl juda katta (5 MB dan oshmasin).")
+MAX_FILE_BYTES = 10 * 1024 * 1024
+IMPORT_EXTENSIONS = (".csv", ".xlsx")
+
+
+@router.message(F.document.file_name.lower().endswith(IMPORT_EXTENSIONS))
+async def import_file(message: Message, bot: Bot) -> None:
+    document = message.document
+    if document.file_size and document.file_size > MAX_FILE_BYTES:
+        await message.answer("Fayl juda katta (10 MB dan oshmasin).")
         return
-    buffer = await bot.download(message.document)
-    raw = buffer.read()
+    await message.answer("⏳ Fayl o'qilmoqda...")
+    buffer = await bot.download(document)
     try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        text = raw.decode("cp1251")  # Excel'ning ruscha Windows kodirovkasi
-    points, errors = parse_csv(text)
+        points, errors = parse_file(document.file_name, buffer.read())
+    except Exception as exc:
+        await message.answer(f"❌ Faylni o'qib bo'lmadi: {exc}")
+        return
     added, skipped = await save_points(points)
-    report = f"📥 Import: ✅ {added} ta qo'shildi, ↩️ {skipped} ta takror, ❌ {len(errors)} ta xato."
+    by_kind: dict[str, int] = {}
+    for p in points:
+        by_kind[p.kind] = by_kind.get(p.kind, 0) + 1
+    kinds = "\n".join(f"  {KINDS.get(k, k)}: {n}" for k, n in sorted(by_kind.items(), key=lambda x: -x[1]))
+    report = (
+        f"📥 <b>Import</b>\n"
+        f"✅ Qo'shildi: {added}\n↩️ Takror (o'tkazib yuborildi): {skipped}\n❌ Xato qatorlar: {len(errors)}"
+    )
+    if kinds:
+        report += f"\n\nFayldagi turlar:\n{kinds}"
     if errors:
         report += "\n\n" + "\n".join(errors[:10])
     await message.answer(report)
+
+
+@router.message(Command("clear_imported"))
+async def cmd_clear_imported(message: Message) -> None:
+    removed = await clear_imported()
+    await message.answer(f"🗑 Fayldan yuklangan {removed} ta nuqta o'chirildi. Endi yangi ro'yxatni yuboring.")
 
 
 @router.message(Command("osm"))

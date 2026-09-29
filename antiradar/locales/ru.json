@@ -8,7 +8,7 @@
   "speed_limit_line": "🚦 Ограничение: <b>{limit} км/ч</b>",
   "overspeed_line": "🔴 Ваша скорость <b>{speed} км/ч</b> — снизьте скорость!",
   "personal_overspeed": "🔴 Ваша скорость <b>{speed} км/ч</b> — превышен ваш лимит {limit} км/ч.",
-  "kind_fixed": "Камера скорости",
+  "kind_fixed": "Радар скорости",
   "kind_mobile": "Мобильный радар",
   "kind_red_light": "Камера на светофоре",
   "kind_average": "Камера средней скорости",
@@ -46,5 +46,7 @@
   "kind_children": "Осторожно, дети",
   "btn_signs": "🪧 Дорожные знаки: {state}",
   "state_on": "вкл",
-  "state_off": "выкл"
+  "state_off": "выкл",
+  "kind_camera": "Стационарная камера",
+  "kind_smart": "Интеллектуальная камера с радаром"
 }

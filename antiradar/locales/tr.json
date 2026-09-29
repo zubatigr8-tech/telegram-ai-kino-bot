@@ -8,7 +8,7 @@
   "speed_limit_line": "🚦 Hız sınırı: <b>{limit} km/s</b>",
   "overspeed_line": "🔴 Hızınız <b>{speed} km/s</b> — yavaşlayın!",
   "personal_overspeed": "🔴 Hızınız <b>{speed} km/s</b> — belirlediğiniz {limit} km/s sınırını aştınız.",
-  "kind_fixed": "Hız kamerası",
+  "kind_fixed": "Hız radarı",
   "kind_mobile": "Mobil radar",
   "kind_red_light": "Kırmızı ışık kamerası",
   "kind_average": "Ortalama hız kamerası",
@@ -46,5 +46,7 @@
   "kind_children": "Dikkat, çocuklar",
   "btn_signs": "🪧 Trafik levhaları: {state}",
   "state_on": "açık",
-  "state_off": "kapalı"
+  "state_off": "kapalı",
+  "kind_camera": "Sabit kamera",
+  "kind_smart": "Akıllı kamera ve radar"
 }

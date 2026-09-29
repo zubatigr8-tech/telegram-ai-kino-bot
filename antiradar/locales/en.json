@@ -8,7 +8,7 @@
   "speed_limit_line": "🚦 Speed limit: <b>{limit} km/h</b>",
   "overspeed_line": "🔴 Your speed is <b>{speed} km/h</b> — slow down!",
   "personal_overspeed": "🔴 Your speed is <b>{speed} km/h</b> — above your {limit} km/h limit.",
-  "kind_fixed": "Speed camera",
+  "kind_fixed": "Speed radar",
   "kind_mobile": "Mobile radar",
   "kind_red_light": "Red light camera",
   "kind_average": "Average speed camera",
@@ -46,5 +46,7 @@
   "kind_children": "Caution, children",
   "btn_signs": "🪧 Road signs: {state}",
   "state_on": "on",
-  "state_off": "off"
+  "state_off": "off",
+  "kind_camera": "Stationary camera",
+  "kind_smart": "Smart camera with radar"
 }

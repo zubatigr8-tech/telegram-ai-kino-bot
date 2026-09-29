@@ -31,8 +31,9 @@ radarlar, YPX postlari va **yo'l belgilariga** yaqinlashganda oldindan **ovozli*
 - ⭐ Telegram Stars orqali oylik obuna, sinov davri
 - 🗺 **Radarlar bazasi avtomatik**: bot har kuni OpenStreetMap'dan radar va belgilarni o'zi yangilaydi
   (OSM'dan o'chirilganlari botdan ham o'chadi). Haydovchilar hech narsa qo'shmaydi
-- 📥 Tayyor ro'yxatni yuklash: admin botga `.csv` fayl yuboradi (rasmiy ro'yxat yoki litsenziyali baza)
-- 👮 Admin: `/stats`, `/osm` (hozir yangilash), oddiy joylashuv yuborib nuqta qo'shish, `/delcam <id>`
+- 📥 Tayyor ro'yxatni yuklash: admin botga `.xlsx` yoki `.csv` fayl yuboradi. Rasmiy fotoradarlar ro'yxati
+  formati (Viloyat / Tuman / Joylashgan joyi / Turi / Kenglik / Uzunlik) to'g'ridan-to'g'ri o'qiladi
+- 👮 Admin: `/stats`, `/osm` (hozir yangilash), `/clear_imported` (fayldan yuklanganlarni o'chirish), oddiy joylashuv yuborib nuqta qo'shish, `/delcam <id>`
 
 ## Sozlash
 
@@ -63,15 +64,17 @@ python -m antiradar.osm_import
 ## Radarlar qayerdan olinadi
 
 1. **OpenStreetMap** — avtomatik, har kuni. O'zbekiston bo'yicha to'liq emas.
-2. **CSV fayl** — admin botga yuboradi. Ustunlar: `lat`, `lon`, `kind`, `speed_limit`, `direction`
-   (faqat `lat` va `lon` majburiy; `;` yoki `,` bilan ajratilgan, Excel'dan saqlash mumkin):
+2. **Fayl (.xlsx yoki .csv)** — admin botga yuboradi. Rasmiy ro'yxat jadvali (Turi: «Statsionar radar»,
+   «Statsionar kamera», «Intellektual + radar»; Kenglik / Uzunlik) o'zgartirmasdan o'qiladi, sarlavhalar
+   o'zbek/rus/ingliz tilida bo'lishi mumkin. Yangilangan ro'yxatni to'liq qayta yuklashdan oldin `/clear_imported`.
+   O'z faylingizni tuzsangiz: ustunlar `lat`, `lon`, `kind`, `speed_limit`, `direction` (faqat `lat` va `lon` majburiy):
 
    ```csv
    lat;lon;kind;speed_limit
    41.311081;69.240562;fixed;60
    41.299496;69.268440;crossing;
    ```
-   `kind` qiymatlari: `fixed`, `mobile`, `red_light`, `average`, `police`, `speed_limit`, `crossing`,
+   `kind` qiymatlari: `fixed` (radar), `camera`, `smart`, `mobile`, `red_light`, `average`, `police`, `speed_limit`, `crossing`,
    `stop`, `give_way`, `speed_bump`, `railway_crossing`, `children`. 15 m ichidagi takrorlar o'tkazib yuboriladi.
 3. **Qo'lda** — admin botga oddiy (jonli emas) joylashuv yuboradi → turi → tezlik chegarasi.
 
@@ -98,7 +101,7 @@ antiradar/
 ├── i18n.py          # tarjimalar
 ├── locales/         # uz / ru / en / tr
 ├── osm_import.py    # OpenStreetMap importi + kunlik avtomatik yangilash
-├── file_import.py   # CSV fayldan import
+├── file_import.py   # Excel / CSV fayldan import (rasmiy ro'yxat formati)
 └── handlers/        # start, settings, subscription, location, admin
 ```
 

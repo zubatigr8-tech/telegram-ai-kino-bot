@@ -7,13 +7,14 @@ from aiogram.types import Message
 from sqlalchemy import select
 
 from antiradar.alerts import (
-    ALERT_THRESHOLDS_M,
+    RADAR_KINDS,
     SEARCH_RADIUS_M,
     Alert,
     CameraPoint,
     personal_overspeed,
     pick_alerts,
     tracker,
+    thresholds_for,
     update_motion,
 )
 from antiradar.config import settings
@@ -63,7 +64,7 @@ async def warm_voice_cache() -> None:
     for lang in LANGUAGES:
         for kind, limit in combos:
             cam = CameraPoint(id=0, lat=0, lon=0, kind=kind, speed_limit=limit)
-            for threshold in ALERT_THRESHOLDS_M:
+            for threshold in thresholds_for(kind):
                 for overspeed in (False, True):
                     alert = Alert(camera=cam, distance_m=threshold, threshold_m=threshold, overspeed=overspeed)
                     phrases.append((lang, alert_voice_text(lang, alert)))
@@ -99,6 +100,7 @@ async def process_point(bot: Bot, message: Message, user: User) -> None:
             id=c.id, lat=c.lat, lon=c.lon, kind=c.kind, speed_limit=c.speed_limit, direction=c.direction
         )
         for c in await cameras_near(loc.latitude, loc.longitude, SEARCH_RADIUS_M)
+        if user.signs_enabled or c.kind in RADAR_KINDS
     ]
     for alert in pick_alerts(state, cameras):
         await notify(bot, user.tg_id, lang, alert_voice_text(lang, alert), alert_text(lang, alert, state.speed_kmh))

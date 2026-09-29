@@ -208,3 +208,43 @@ def test_voice_text_uses_threshold_not_exact_distance():
     alert = Alert(camera=cam, distance_m=437.2, threshold_m=500, overspeed=True)
     text = alert_voice_text("uz", alert)
     assert text == "Diqqat! 500 metrdan keyin Tezlik kamerasi. Tezlik chegarasi 60. Tezlikni kamaytiring!"
+
+
+# --- Yo'l belgilari ---
+
+from antiradar.alerts import RADAR_KINDS, SIGN_KINDS
+from antiradar.osm_import import parse_kind
+
+
+def test_sign_alerts_once_at_150m():
+    sign = CameraPoint(id=7, lat=north(600), lon=LON, kind="crossing")
+    got = drive(TrackState(), [sign], [0, 100, 200, 300, 400, 460, 500, 550])
+    assert len(got) == 1
+    assert got[0].threshold_m == 150 and got[0].distance_m <= 150
+
+
+def test_radar_and_sign_together():
+    radar = CameraPoint(id=1, lat=north(700), lon=LON, speed_limit=60)
+    sign = CameraPoint(id=2, lat=north(650), lon=LON, kind="speed_limit", speed_limit=60)
+    got = drive(TrackState(), [radar, sign], [0, 100, 250, 400, 520, 560])
+    # Radar: 500 va 200 m da; belgi: faqat 150 m da (yaqinrog'i birinchi aytiladi)
+    assert [(a.camera.id, a.threshold_m) for a in got] == [(1, 500), (2, 150), (1, 200)]
+
+
+def test_osm_sign_kinds():
+    assert parse_kind({"highway": "speed_camera"}) == "fixed"
+    assert parse_kind({"highway": "crossing"}) == "crossing"
+    assert parse_kind({"highway": "crossing", "crossing": "no"}) is None
+    assert parse_kind({"highway": "stop"}) == "stop"
+    assert parse_kind({"highway": "give_way"}) == "give_way"
+    assert parse_kind({"traffic_calming": "bump"}) == "speed_bump"
+    assert parse_kind({"traffic_calming": "island"}) is None
+    assert parse_kind({"railway": "level_crossing"}) == "railway_crossing"
+    assert parse_kind({"hazard": "children"}) == "children"
+    assert parse_kind({"traffic_sign": "UZ:3.24", "maxspeed": "40"}) == "speed_limit"
+
+
+def test_every_kind_has_translation():
+    for code in LANGUAGES:
+        for kind in RADAR_KINDS + SIGN_KINDS:
+            assert t(code, f"kind_{kind}") != f"kind_{kind}", (code, kind)

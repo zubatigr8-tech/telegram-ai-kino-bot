@@ -1,6 +1,6 @@
 {
   "choose_language": "🗣 Dil seçin:",
-  "welcome": "👋 Hoş geldiniz! Ben sürücüler için <b>AI Antiradar</b> botuyum.\n\nYoldaki hız kameraları ve radarlar hakkında sizi önceden uyarırım.\n\n🎁 <b>{days} günlük ücretsiz deneme</b> verildi ({date} tarihine kadar).",
+  "welcome": "👋 Hoş geldiniz! Ben sürücüler için <b>AI Antiradar</b> botuyum.\n\nRadarlar, hız kameraları ve trafik levhaları hakkında sizi önceden <b>sesli</b> uyarırım.\n\n🎁 <b>{days} günlük ücretsiz deneme</b> verildi ({date} tarihine kadar).",
   "how_to": "📍 <b>Nasıl başlatılır:</b>\n1. Alttaki 📎 (ataş) simgesine dokunun\n2. «Konum» seçin\n3. «Canlı Konum Paylaş» seçeneğine dokunup süre seçin (örn. 8 saat)\n\nBundan sonra yolunuzdaki kameralar hakkında uyarırım. Telegram arka planda açık kalmalı.",
   "live_started": "✅ Takip başladı. İyi yolculuklar! 🚗",
   "static_location_hint": "ℹ️ Normal konum gönderdiniz. Uyarılar için <b>Canlı Konum</b> gerekir.",
@@ -25,7 +25,7 @@
   "menu_subscription": "⭐ Abonelik",
   "menu_settings": "⚙️ Ayarlar",
   "menu_help": "❓ Yardım",
-  "settings_title": "⚙️ <b>Ayarlar</b>\n\n🗣 Dil: {lang}\n🚀 Kişisel hız sınırı: {max_speed}",
+  "settings_title": "⚙️ <b>Ayarlar</b>\n\n🗣 Dil: {lang}\n🚀 Kişisel hız sınırı: {max_speed}\n🪧 Trafik levhası uyarıları: {signs}",
   "btn_language": "🗣 Dili değiştir",
   "btn_max_speed": "🚀 Hız sınırı",
   "max_speed_choose": "🚀 Hangi hızın üstünde uyarayım?",
@@ -36,5 +36,15 @@
   "voice_camera": "Dikkat! {distance} metre sonra {kind}.",
   "voice_limit": "Hız sınırı {limit}.",
   "voice_overspeed": "Yavaşlayın!",
-  "voice_personal_overspeed": "Hız {limit} üzerinde. Yavaşlayın!"
+  "voice_personal_overspeed": "Hız {limit} üzerinde. Yavaşlayın!",
+  "kind_speed_limit": "Hız sınırı levhası",
+  "kind_crossing": "Yaya geçidi",
+  "kind_stop": "Dur levhası",
+  "kind_give_way": "Yol ver levhası",
+  "kind_speed_bump": "Hız kesici",
+  "kind_railway_crossing": "Hemzemin geçit",
+  "kind_children": "Dikkat, çocuklar",
+  "btn_signs": "🪧 Trafik levhaları: {state}",
+  "state_on": "açık",
+  "state_off": "kapalı"
 }

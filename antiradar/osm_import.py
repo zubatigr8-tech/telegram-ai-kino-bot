@@ -1,4 +1,4 @@
-"""OpenStreetMap'dan tezlik kameralarini bazaga import qilish.
+"""OpenStreetMap'dan tezlik kameralari va yo'l belgilarini bazaga import qilish.
 
 Ishlatish:  python -m antiradar.osm_import          (standart: O'zbekiston)
             python -m antiradar.osm_import KZ       (boshqa davlat, ISO kodi)
@@ -28,7 +28,13 @@ def build_query(country: str) -> str:
         "[out:json][timeout:300];"
         f'area["ISO3166-1"="{country}"][admin_level=2]->.a;'
         '(node["highway"="speed_camera"](area.a);'
-        'node["enforcement"="maxspeed"](area.a););'
+        'node["enforcement"="maxspeed"](area.a);'
+        # Yo'l belgilari
+        'node["highway"~"^(crossing|stop|give_way)$"](area.a);'
+        'node["traffic_calming"](area.a);'
+        'node["railway"="level_crossing"](area.a);'
+        'node["hazard"="children"](area.a);'
+        'node["traffic_sign"]["maxspeed"](area.a););'
         "out body;"
     )
 
@@ -57,12 +63,31 @@ def parse_direction(raw: str | None) -> float | None:
         return None  # "forward", "both" va h.k. — yo'nalish noma'lum deb olamiz
 
 
-def parse_kind(tags: dict) -> str:
-    if tags.get("enforcement") == "traffic_signals" or tags.get("camera:type") == "red_light":
-        return "red_light"
-    if tags.get("enforcement") == "average_speed":
-        return "average"
-    return "fixed"
+SPEED_BUMPS = {"bump", "hump", "table", "cushion", "yes", "mini_bumps", "dip"}
+
+
+def parse_kind(tags: dict) -> str | None:
+    """OSM teglaridan tur; None — kerak emas (masalan crossing=no)."""
+    if tags.get("highway") == "speed_camera" or tags.get("enforcement"):
+        if tags.get("enforcement") == "traffic_signals" or tags.get("camera:type") == "red_light":
+            return "red_light"
+        if tags.get("enforcement") == "average_speed":
+            return "average"
+        return "fixed"
+    if tags.get("railway") == "level_crossing":
+        return "railway_crossing"
+    if tags.get("hazard") == "children":
+        return "children"
+    highway = tags.get("highway")
+    if highway == "crossing" and tags.get("crossing") != "no":
+        return "crossing"
+    if highway in ("stop", "give_way"):
+        return highway
+    if tags.get("traffic_calming") in SPEED_BUMPS:
+        return "speed_bump"
+    if tags.get("traffic_sign") and parse_maxspeed(tags.get("maxspeed")):
+        return "speed_limit"
+    return None
 
 
 def fetch(country: str) -> list[dict]:
@@ -87,11 +112,14 @@ async def import_country(country: str) -> tuple[int, int]:
             if el.get("type") != "node":
                 continue
             tags = el.get("tags", {})
+            kind = parse_kind(tags)
+            if kind is None:
+                continue
             fields = dict(
                 country=country,
                 lat=el["lat"],
                 lon=el["lon"],
-                kind=parse_kind(tags),
+                kind=kind,
                 speed_limit=parse_maxspeed(tags.get("maxspeed")),
                 direction=parse_direction(tags.get("direction") or tags.get("camera:direction")),
             )
@@ -112,7 +140,7 @@ async def import_country(country: str) -> tuple[int, int]:
 def main() -> None:
     country = (sys.argv[1] if len(sys.argv) > 1 else settings.COUNTRY).upper()
     added, updated = asyncio.run(import_country(country))
-    print(f"{country}: {added} ta yangi kamera qo'shildi, {updated} ta yangilandi.")
+    print(f"{country}: {added} ta yangi nuqta (kamera/belgi) qo'shildi, {updated} ta yangilandi.")
 
 
 if __name__ == "__main__":

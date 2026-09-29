@@ -28,11 +28,13 @@ def language_keyboard(suggested: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def settings_keyboard(lang: str) -> InlineKeyboardMarkup:
+def settings_keyboard(lang: str, signs_enabled: bool) -> InlineKeyboardMarkup:
+    signs_state = t(lang, "state_on" if signs_enabled else "state_off")
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=t(lang, "btn_language"), callback_data="set:lang")],
             [InlineKeyboardButton(text=t(lang, "btn_max_speed"), callback_data="set:speed")],
+            [InlineKeyboardButton(text=t(lang, "btn_signs", state=signs_state), callback_data="set:signs")],
         ]
     )
 

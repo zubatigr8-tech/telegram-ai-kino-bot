@@ -1,6 +1,6 @@
 {
   "choose_language": "🗣 Choose your language:",
-  "welcome": "👋 Welcome! I'm <b>AI Antiradar</b>, a bot for drivers.\n\nI warn you in advance about speed cameras and radars on the road.\n\n🎁 You've got a <b>{days}-day free trial</b> (until {date}).",
+  "welcome": "👋 Welcome! I'm <b>AI Antiradar</b>, a bot for drivers.\n\nI give you <b>voice</b> warnings in advance about radars, speed cameras and road signs.\n\n🎁 You've got a <b>{days}-day free trial</b> (until {date}).",
   "how_to": "📍 <b>How to start:</b>\n1. Tap 📎 (paperclip) below\n2. Choose «Location»\n3. Tap «Share Live Location» and pick a duration (e.g. 8 hours)\n\nAfter that I'll warn you about cameras on your way. Keep Telegram running in the background.",
   "live_started": "✅ Tracking started. Have a safe trip! 🚗",
   "static_location_hint": "ℹ️ You sent a regular location. Alerts need a <b>Live Location</b>.",
@@ -25,7 +25,7 @@
   "menu_subscription": "⭐ Subscription",
   "menu_settings": "⚙️ Settings",
   "menu_help": "❓ Help",
-  "settings_title": "⚙️ <b>Settings</b>\n\n🗣 Language: {lang}\n🚀 Personal speed limit: {max_speed}",
+  "settings_title": "⚙️ <b>Settings</b>\n\n🗣 Language: {lang}\n🚀 Personal speed limit: {max_speed}\n🪧 Road sign alerts: {signs}",
   "btn_language": "🗣 Change language",
   "btn_max_speed": "🚀 Speed limit",
   "max_speed_choose": "🚀 Warn me above which speed?",
@@ -36,5 +36,15 @@
   "voice_camera": "Attention! {kind} in {distance} meters.",
   "voice_limit": "Speed limit {limit}.",
   "voice_overspeed": "Slow down!",
-  "voice_personal_overspeed": "Speed above {limit}. Slow down!"
+  "voice_personal_overspeed": "Speed above {limit}. Slow down!",
+  "kind_speed_limit": "Speed limit sign",
+  "kind_crossing": "Pedestrian crossing",
+  "kind_stop": "Stop sign",
+  "kind_give_way": "Give way sign",
+  "kind_speed_bump": "Speed bump",
+  "kind_railway_crossing": "Railway crossing",
+  "kind_children": "Caution, children",
+  "btn_signs": "🪧 Road signs: {state}",
+  "state_on": "on",
+  "state_off": "off"
 }

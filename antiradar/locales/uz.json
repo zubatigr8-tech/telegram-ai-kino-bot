@@ -1,6 +1,6 @@
 {
   "choose_language": "🗣 Tilni tanlang:",
-  "welcome": "👋 Xush kelibsiz! Men haydovchilar uchun <b>AI Antiradar</b> botman.\n\nYo'lda tezlik kameralari va radarlarga yaqinlashganingizda oldindan ogohlantiraman.\n\n🎁 Sizga <b>{days} kunlik bepul sinov</b> berildi ({date} gacha).",
+  "welcome": "👋 Xush kelibsiz! Men haydovchilar uchun <b>AI Antiradar</b> botman.\n\nYo'lda radarlar, tezlik kameralari va yo'l belgilariga yaqinlashganingizda oldindan <b>ovozli</b> ogohlantiraman.\n\n🎁 Sizga <b>{days} kunlik bepul sinov</b> berildi ({date} gacha).",
   "how_to": "📍 <b>Qanday ishga tushiriladi:</b>\n1. Pastdagi 📎 (skrepka) tugmasini bosing\n2. «Joylashuv» (Location) ni tanlang\n3. «Jonli joylashuvni ulashish» (Share Live Location) ni bosing va muddatni tanlang (masalan 8 soat)\n\nShundan so'ng yo'lda kamera yaqinlashsa, men xabar beraman. Telegram fonda ishlab turishi kerak.",
   "live_started": "✅ Kuzatish boshlandi. Oq yo'l! 🚗",
   "static_location_hint": "ℹ️ Siz oddiy joylashuv yubordingiz. Ogohlantirishlar uchun <b>jonli joylashuv</b> (Live Location) kerak.",
@@ -25,7 +25,7 @@
   "menu_subscription": "⭐ Obuna",
   "menu_settings": "⚙️ Sozlamalar",
   "menu_help": "❓ Yordam",
-  "settings_title": "⚙️ <b>Sozlamalar</b>\n\n🗣 Til: {lang}\n🚀 Shaxsiy tezlik chegarasi: {max_speed}",
+  "settings_title": "⚙️ <b>Sozlamalar</b>\n\n🗣 Til: {lang}\n🚀 Shaxsiy tezlik chegarasi: {max_speed}\n🪧 Yo'l belgilari haqida ogohlantirish: {signs}",
   "btn_language": "🗣 Tilni o'zgartirish",
   "btn_max_speed": "🚀 Tezlik chegarasi",
   "max_speed_choose": "🚀 Qaysi tezlikdan oshsangiz ogohlantiray?",
@@ -36,5 +36,15 @@
   "voice_camera": "Diqqat! {distance} metrdan keyin {kind}.",
   "voice_limit": "Tezlik chegarasi {limit}.",
   "voice_overspeed": "Tezlikni kamaytiring!",
-  "voice_personal_overspeed": "Tezlik {limit} dan oshdi. Sekinlashing!"
+  "voice_personal_overspeed": "Tezlik {limit} dan oshdi. Sekinlashing!",
+  "kind_speed_limit": "Tezlikni cheklash belgisi",
+  "kind_crossing": "Piyodalar o'tish joyi",
+  "kind_stop": "STOP belgisi",
+  "kind_give_way": "Yo'l bering belgisi",
+  "kind_speed_bump": "Sun'iy notekislik",
+  "kind_railway_crossing": "Temir yo'l kesishmasi",
+  "kind_children": "Ehtiyot bo'ling, bolalar",
+  "btn_signs": "🪧 Yo'l belgilari: {state}",
+  "state_on": "yoqilgan",
+  "state_off": "o'chirilgan"
 }

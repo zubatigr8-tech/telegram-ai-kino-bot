@@ -10,7 +10,9 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    inspect,
     select,
+    text,
 )
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -43,6 +45,8 @@ class User(Base):
     country: Mapped[str] = mapped_column(String(2), default=settings.COUNTRY)
     # Shaxsiy tezlik chegarasi (km/soat), None — o'chirilgan
     max_speed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Yo'l belgilari (piyodalar o'tish joyi, STOP...) haqida ham ogohlantirilsinmi
+    signs_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
     trial_until: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_until: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -94,9 +98,23 @@ engine = create_async_engine(settings.DATABASE_URL, echo=False)
 async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
+# Keyinroq qo'shilgan ustunlar: create_all eski jadvalga ustun qo'shmaydi
+_ADDED_COLUMNS = [
+    ("users", "signs_enabled", "BOOLEAN NOT NULL DEFAULT 1"),
+]
+
+
+def _add_missing_columns(sync_conn) -> None:
+    inspector = inspect(sync_conn)
+    for table, column, sql_type in _ADDED_COLUMNS:
+        if column not in {c["name"] for c in inspector.get_columns(table)}:
+            sync_conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}"))
+
+
 async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_add_missing_columns)
 
 
 @asynccontextmanager

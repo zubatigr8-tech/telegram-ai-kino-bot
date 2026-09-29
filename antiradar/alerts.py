@@ -3,14 +3,20 @@
 Har bir jonli joylashuv yangilanishida:
 1. oldingi nuqtadan tezlik va yo'nalish hisoblanadi;
 2. atrofdagi kameralardan faqat OLDINDA va haydovchi yo'nalishiga mos kelganlari tanlanadi;
-3. har kamera uchun har masofa chegarasida (500 m, 200 m) faqat bir marta ogohlantiriladi.
+3. har kamera uchun har masofa chegarasida (500 m, 200 m) faqat bir marta ogohlantiriladi;
+   yo'l belgilari uchun — bir marta, 150 m da.
 """
 import time
 from dataclasses import dataclass, field
 
 from antiradar.geo import angle_diff, bearing_deg, distance_m
 
-ALERT_THRESHOLDS_M = (500, 200)  # kattadan kichikka
+# Radarlar/kameralar va yo'l belgilari. Belgilar ko'p (ayniqsa shaharda), shuning uchun ular
+# faqat bir marta, yaqinroqda aytiladi.
+RADAR_KINDS = ("fixed", "mobile", "red_light", "average", "police")
+SIGN_KINDS = ("speed_limit", "crossing", "stop", "give_way", "speed_bump", "railway_crossing", "children")
+ALERT_THRESHOLDS_M = (500, 200)  # radarlar uchun, kattadan kichikka
+SIGN_THRESHOLDS_M = (150,)
 SEARCH_RADIUS_M = 1200
 RESET_DISTANCE_M = 1000  # kameradan shuncha uzoqlashgach, keyingi safar yana ogohlantiriladi
 AHEAD_MAX_ANGLE = 50  # kamera haydovchi yo'nalishidan shu burchak ichida bo'lsa — "oldinda"
@@ -70,6 +76,10 @@ def update_motion(state: TrackState, lat: float, lon: float, ts: float, heading:
     state.lat, state.lon, state.ts = lat, lon, ts
 
 
+def thresholds_for(kind: str) -> tuple[int, ...]:
+    return SIGN_THRESHOLDS_M if kind in SIGN_KINDS else ALERT_THRESHOLDS_M
+
+
 def _is_relevant(cam: CameraPoint, lat: float, lon: float, heading: float | None) -> bool:
     if heading is None:
         return True  # yo'nalish noma'lum — xavfsizlik uchun hammasidan ogohlantiramiz
@@ -95,7 +105,7 @@ def pick_alerts(state: TrackState, cameras: list[CameraPoint]) -> list[Alert]:
     alerts = []
     for cam in sorted(cameras, key=lambda c: distances[c.id]):
         dist = distances[cam.id]
-        crossed = [t for t in ALERT_THRESHOLDS_M if dist <= t]
+        crossed = [t for t in thresholds_for(cam.kind) if dist <= t]
         if not crossed:
             continue
         threshold = min(crossed)

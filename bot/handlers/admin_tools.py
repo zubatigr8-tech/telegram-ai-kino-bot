@@ -5,7 +5,7 @@ from aiogram.enums import MessageOriginType
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from shared.config import settings
+from bot.filters import IsAdmin
 
 router = Router(name="admin_tools")
 
@@ -15,15 +15,15 @@ async def my_id(message: Message) -> None:
     await message.answer(f"Sizning Telegram ID'ingiz: <code>{message.from_user.id}</code>")
 
 
-@router.message(F.video, F.from_user.id.in_(settings.ADMIN_IDS))
+@router.message(F.video, IsAdmin())
 async def get_video_file_id(message: Message) -> None:
     await message.answer(
-        "✅ Video qabul qilindi. Admin panelda kino qo'shishda shu file_id'ni ishlating:\n\n"
+        "✅ Video qabul qilindi. Kino qo'shish uchun /admin → 📥 Kino yuklash. Veb-panel uchun file_id:\n\n"
         f"<code>{message.video.file_id}</code>\n\n(turi: video)"
     )
 
 
-@router.message(F.document, F.from_user.id.in_(settings.ADMIN_IDS))
+@router.message(F.document, IsAdmin())
 async def get_document_file_id(message: Message) -> None:
     await message.answer(
         "✅ Fayl qabul qilindi. Admin panelda kino qo'shishda shu file_id'ni ishlating:\n\n"
@@ -31,7 +31,7 @@ async def get_document_file_id(message: Message) -> None:
     )
 
 
-@router.message(F.forward_origin, F.from_user.id.in_(settings.ADMIN_IDS))
+@router.message(F.forward_origin, IsAdmin())
 async def get_channel_chat_id(message: Message) -> None:
     origin = message.forward_origin
     if origin.type != MessageOriginType.CHANNEL:
@@ -41,5 +41,5 @@ async def get_channel_chat_id(message: Message) -> None:
         f"📢 Kanal: <b>{origin.chat.title}</b>\n"
         f"Chat ID: <code>{origin.chat.id}</code>\n\n"
         "Majburiy kanal qilib qo'shishda shu Chat ID'ni ishlating "
-        "(/admin → 📢 Kanallar → ➕ Kanal qo'shish)."
+        "(/admin → 📣 Kanallarni sozlash → ➕ Kanal qo'shish)."
     )

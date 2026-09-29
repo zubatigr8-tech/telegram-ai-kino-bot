@@ -32,5 +32,9 @@
   "max_speed_off": "o'chirilgan",
   "btn_off": "O'chirish",
   "saved": "✅ Saqlandi.",
-  "unknown": "Kuzatishni boshlash uchun jonli joylashuv yuboring yoki pastdagi menyudan foydalaning."
+  "unknown": "Kuzatishni boshlash uchun jonli joylashuv yuboring yoki pastdagi menyudan foydalaning.",
+  "voice_camera": "Diqqat! {distance} metrdan keyin {kind}.",
+  "voice_limit": "Tezlik chegarasi {limit}.",
+  "voice_overspeed": "Tezlikni kamaytiring!",
+  "voice_personal_overspeed": "Tezlik {limit} dan oshdi. Sekinlashing!"
 }

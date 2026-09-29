@@ -32,5 +32,9 @@
   "max_speed_off": "off",
   "btn_off": "Turn off",
   "saved": "✅ Saved.",
-  "unknown": "Send a Live Location to start tracking, or use the menu below."
+  "unknown": "Send a Live Location to start tracking, or use the menu below.",
+  "voice_camera": "Attention! {kind} in {distance} meters.",
+  "voice_limit": "Speed limit {limit}.",
+  "voice_overspeed": "Slow down!",
+  "voice_personal_overspeed": "Speed above {limit}. Slow down!"
 }

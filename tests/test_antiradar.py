@@ -118,3 +118,93 @@ def test_osm_parsers():
     assert parse_direction("NE") == 45
     assert parse_direction("370") == 10
     assert parse_direction("forward") is None
+
+
+# --- Ovozli ogohlantirish ---
+
+import asyncio
+from types import SimpleNamespace
+
+from antiradar.alerts import Alert
+from antiradar.voice import VoiceSender
+
+
+class FakeBot:
+    def __init__(self, fail_voice=False):
+        self.calls = []
+        self.fail_voice = fail_voice
+
+    async def send_voice(self, chat_id, voice):
+        if self.fail_voice:
+            raise RuntimeError("VOICE_MESSAGES_FORBIDDEN")
+        self.calls.append(("voice", voice if isinstance(voice, str) else "upload"))
+        return SimpleNamespace(voice=SimpleNamespace(file_id="FILE123"))
+
+    async def send_message(self, chat_id, text, **kwargs):
+        self.calls.append(("text", text))
+
+
+def make_sender(tmp_path, counter):
+    async def synth(text, lang, path):
+        counter.append((lang, text))
+        path.write_bytes(b"mp3")
+
+    return VoiceSender(tmp_path, synthesize=synth)
+
+
+def test_voice_is_generated_once_then_file_id_reused(tmp_path):
+    synth_calls = []
+    sender = make_sender(tmp_path, synth_calls)
+    bot = FakeBot()
+
+    async def run():
+        assert await sender.send(bot, 1, "uz", "Diqqat!")
+        assert await sender.send(bot, 2, "uz", "Diqqat!")
+
+    asyncio.run(run())
+    assert synth_calls == [("uz", "Diqqat!")]
+    assert bot.calls == [("voice", "upload"), ("voice", "FILE123")]
+
+
+def test_voice_failure_returns_false(tmp_path):
+    async def broken(text, lang, path):
+        raise ConnectionError("TTS down")
+
+    sender = VoiceSender(tmp_path, synthesize=broken)
+    assert asyncio.run(sender.send(FakeBot(), 1, "uz", "x")) is False
+    assert asyncio.run(make_sender(tmp_path, []).send(FakeBot(fail_voice=True), 1, "uz", "y")) is False
+
+
+def test_voice_warmup_stops_after_repeated_failures(tmp_path):
+    calls = []
+
+    async def broken(text, lang, path):
+        calls.append(text)
+        raise ConnectionError("TTS down")
+
+    sender = VoiceSender(tmp_path, synthesize=broken)
+    assert asyncio.run(sender.warmup([("uz", str(i)) for i in range(10)])) == 0
+    assert len(calls) == 3
+
+
+def test_notify_sends_voice_before_text(tmp_path, monkeypatch):
+    from antiradar.handlers import location
+
+    monkeypatch.setattr(location, "voice_sender", make_sender(tmp_path, []))
+    bot = FakeBot()
+    asyncio.run(location.notify(bot, 1, "uz", "ovoz", "matn"))
+    assert [kind for kind, _ in bot.calls] == ["voice", "text"]
+
+    # Ovoz ishlamasa ham matn baribir yuboriladi
+    bot = FakeBot(fail_voice=True)
+    asyncio.run(location.notify(bot, 1, "uz", "ovoz", "matn"))
+    assert bot.calls == [("text", "matn")]
+
+
+def test_voice_text_uses_threshold_not_exact_distance():
+    from antiradar.handlers.location import alert_voice_text
+
+    cam = CameraPoint(id=1, lat=0, lon=0, kind="fixed", speed_limit=60)
+    alert = Alert(camera=cam, distance_m=437.2, threshold_m=500, overspeed=True)
+    text = alert_voice_text("uz", alert)
+    assert text == "Diqqat! 500 metrdan keyin Tezlik kamerasi. Tezlik chegarasi 60. Tezlikni kamaytiring!"

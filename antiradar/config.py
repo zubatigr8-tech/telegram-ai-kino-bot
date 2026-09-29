@@ -28,6 +28,10 @@ class Settings:
     PRICE_STARS: int = int(os.getenv("ANTIRADAR_PRICE_STARS", "100"))
     TRIAL_DAYS: int = int(os.getenv("ANTIRADAR_TRIAL_DAYS", "3"))
 
+    # Ovozli ogohlantirish (avval ovoz, keyin matn). false — faqat matn
+    VOICE_ENABLED: bool = os.getenv("ANTIRADAR_VOICE", "true").lower() not in ("0", "false", "no")
+    VOICE_CACHE_DIR: str = os.getenv("ANTIRADAR_VOICE_CACHE_DIR", str(BASE_DIR / "voice_cache"))
+
     OVERPASS_URL: str = os.getenv("ANTIRADAR_OVERPASS_URL", "https://overpass-api.de/api/interpreter")
 
 

@@ -37,6 +37,7 @@ class CameraPoint:
 class Alert:
     camera: CameraPoint
     distance_m: float
+    threshold_m: int  # qaysi chegarada (500 / 200 m) — ovozli ibora shu raqam bilan aytiladi
     overspeed: bool  # haydovchi shu kamera limitidan oshib ketyapti
 
 
@@ -108,7 +109,7 @@ def pick_alerts(state: TrackState, cameras: list[CameraPoint]) -> list[Alert]:
             and state.speed_kmh is not None
             and state.speed_kmh > cam.speed_limit + OVERSPEED_TOLERANCE_KMH
         )
-        alerts.append(Alert(camera=cam, distance_m=dist, overspeed=overspeed))
+        alerts.append(Alert(camera=cam, distance_m=dist, threshold_m=threshold, overspeed=overspeed))
     return alerts
 
 

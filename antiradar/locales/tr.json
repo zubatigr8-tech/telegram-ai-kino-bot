@@ -32,5 +32,9 @@
   "max_speed_off": "kapalı",
   "btn_off": "Kapat",
   "saved": "✅ Kaydedildi.",
-  "unknown": "Takibi başlatmak için Canlı Konum gönderin veya alttaki menüyü kullanın."
+  "unknown": "Takibi başlatmak için Canlı Konum gönderin veya alttaki menüyü kullanın.",
+  "voice_camera": "Dikkat! {distance} metre sonra {kind}.",
+  "voice_limit": "Hız sınırı {limit}.",
+  "voice_overspeed": "Yavaşlayın!",
+  "voice_personal_overspeed": "Hız {limit} üzerinde. Yavaşlayın!"
 }

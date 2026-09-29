@@ -1,8 +1,13 @@
-"""Jonli joylashuv: har bir yangilanishda kameralarni tekshirib, ogohlantirish yuboradi."""
+"""Jonli joylashuv: har bir yangilanishda kameralarni tekshirib, ogohlantirish yuboradi
+(avval ovozli, keyin matnli xabar)."""
+import logging
+
 from aiogram import Bot, F, Router
 from aiogram.types import Message
+from sqlalchemy import select
 
 from antiradar.alerts import (
+    ALERT_THRESHOLDS_M,
     SEARCH_RADIUS_M,
     Alert,
     CameraPoint,
@@ -11,11 +16,14 @@ from antiradar.alerts import (
     tracker,
     update_motion,
 )
-from antiradar.db import User, cameras_near
+from antiradar.config import settings
+from antiradar.db import Camera, User, cameras_near, get_session
 from antiradar.handlers.subscription import pay_markup
-from antiradar.i18n import t
-from antiradar.keyboards import main_menu
+from antiradar.i18n import LANGUAGES, t
+from antiradar.keyboards import SPEED_OPTIONS, main_menu
+from antiradar.voice import voice_sender
 
+logger = logging.getLogger(__name__)
 router = Router(name="location")
 
 
@@ -28,6 +36,47 @@ def alert_text(lang: str, alert: Alert, speed_kmh: float | None) -> str:
     if alert.overspeed and speed_kmh is not None:
         lines.append(t(lang, "overspeed_line", speed=round(speed_kmh)))
     return "\n".join(lines)
+
+
+def alert_voice_text(lang: str, alert: Alert) -> str:
+    # Masofa aniq metr emas, chegara (500 / 200) bilan aytiladi — shunda iboralar soni cheklangan
+    # va har biri bir marta generatsiya qilinib keshlanadi
+    cam = alert.camera
+    parts = [t(lang, "voice_camera", kind=t(lang, f"kind_{cam.kind}"), distance=alert.threshold_m)]
+    if cam.speed_limit:
+        parts.append(t(lang, "voice_limit", limit=cam.speed_limit))
+    if alert.overspeed:
+        parts.append(t(lang, "voice_overspeed"))
+    return " ".join(parts)
+
+
+async def warm_voice_cache() -> None:
+    """Bazadagi kamera turlari/limitlari uchun barcha ovozli iboralarni oldindan tayyorlaydi,
+    shunda yo'lda ogohlantirish TTS'ni kutmasdan darhol yuboriladi."""
+    if not settings.VOICE_ENABLED:
+        return
+    async with get_session() as session:
+        combos = (await session.execute(
+            select(Camera.kind, Camera.speed_limit).where(Camera.is_active.is_(True)).distinct()
+        )).all()
+    phrases = []
+    for lang in LANGUAGES:
+        for kind, limit in combos:
+            cam = CameraPoint(id=0, lat=0, lon=0, kind=kind, speed_limit=limit)
+            for threshold in ALERT_THRESHOLDS_M:
+                for overspeed in (False, True):
+                    alert = Alert(camera=cam, distance_m=threshold, threshold_m=threshold, overspeed=overspeed)
+                    phrases.append((lang, alert_voice_text(lang, alert)))
+        phrases += [(lang, t(lang, "voice_personal_overspeed", limit=s)) for s in SPEED_OPTIONS]
+    ready = await voice_sender.warmup(list(dict.fromkeys(phrases)))
+    logger.info("Ovozli iboralar tayyor: %s / %s", ready, len(set(phrases)))
+
+
+async def notify(bot: Bot, chat_id: int, lang: str, voice_text: str, text: str) -> None:
+    """Avval ovozli xabar (haydovchi ekranga qaramasdan eshitadi), keyin matnli."""
+    if settings.VOICE_ENABLED:
+        await voice_sender.send(bot, chat_id, lang, voice_text)
+    await bot.send_message(chat_id, text)
 
 
 async def process_point(bot: Bot, message: Message, user: User) -> None:
@@ -52,11 +101,15 @@ async def process_point(bot: Bot, message: Message, user: User) -> None:
         for c in await cameras_near(loc.latitude, loc.longitude, SEARCH_RADIUS_M)
     ]
     for alert in pick_alerts(state, cameras):
-        await bot.send_message(user.tg_id, alert_text(lang, alert, state.speed_kmh))
+        await notify(bot, user.tg_id, lang, alert_voice_text(lang, alert), alert_text(lang, alert, state.speed_kmh))
 
     if personal_overspeed(state, user.max_speed):
-        await bot.send_message(
-            user.tg_id, t(lang, "personal_overspeed", speed=round(state.speed_kmh), limit=user.max_speed)
+        await notify(
+            bot,
+            user.tg_id,
+            lang,
+            t(lang, "voice_personal_overspeed", limit=user.max_speed),
+            t(lang, "personal_overspeed", speed=round(state.speed_kmh), limit=user.max_speed),
         )
 
 

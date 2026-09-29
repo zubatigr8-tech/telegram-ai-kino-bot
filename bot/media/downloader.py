@@ -211,18 +211,55 @@ async def download_video(url: str, outdir: Path) -> VideoResult:
     return result
 
 
-def _search_song_sync(query: str) -> dict | None:
+@dataclass
+class SongCandidate:
+    """Qidiruv natijasidagi bitta qo'shiq."""
+    url: str
+    title: str
+    artist: str | None
+    duration: float | None
+    source: str  # youtube | soundcloud
+
+
+def _search_sync(prefix: str, query: str, limit: int) -> list[SongCandidate]:
     opts = _base_opts(Path(settings.DOWNLOAD_DIR))
-    opts.update({"extract_flat": "in_playlist", "noplaylist": False, "playlistend": 5})
+    opts.update({"extract_flat": "in_playlist", "noplaylist": False, "playlistend": limit})
     with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(f"ytsearch5:{query}", download=False)
+        info = ydl.extract_info(f"{prefix}{limit}:{query}", download=False)
+    source = "soundcloud" if prefix == "scsearch" else "youtube"
+    result = []
     for entry in (info or {}).get("entries") or []:
         if not entry:
             continue
         duration = entry.get("duration") or 0
-        if 0 < duration <= MAX_SONG_DURATION:
-            return entry
-    return None
+        if duration and not (20 <= duration <= MAX_SONG_DURATION):
+            continue  # juda qisqa (reklama/shorts) yoki juda uzun (mix, podkast)
+        url = entry.get("url") or entry.get("webpage_url")
+        if not url and entry.get("id") and source == "youtube":
+            url = f"https://www.youtube.com/watch?v={entry['id']}"
+        if not url or not entry.get("title"):
+            continue
+        result.append(SongCandidate(
+            url=url,
+            title=entry["title"],
+            artist=entry.get("uploader") or entry.get("channel"),
+            duration=duration or None,
+            source=source,
+        ))
+    return result
+
+
+async def search_songs(query: str, limit: int = 6) -> list[SongCandidate]:
+    """Qo'shiq nomi yoki matni (lyrics) bo'yicha qidiradi: avval YouTube, bo'lmasa SoundCloud."""
+    for prefix, q in (("ytsearch", f"{query} lyrics"), ("ytsearch", query), ("scsearch", query)):
+        try:
+            found = await asyncio.to_thread(_search_sync, prefix, q, limit)
+        except Exception as exc:  # qidiruv sahifasi to'silgan bo'lishi mumkin — keyingi manbaga o'tamiz
+            logger.warning("Qidiruv xatosi (%s %s): %s", prefix, q, exc)
+            continue
+        if found:
+            return found[:limit]
+    return []
 
 
 def _download_audio_sync(url: str, outdir: Path) -> AudioResult:
@@ -243,14 +280,26 @@ def _download_audio_sync(url: str, outdir: Path) -> AudioResult:
     )
 
 
-async def find_and_download_song(query: str, outdir: Path) -> AudioResult | None:
-    """YouTube'dan qo'shiqning to'liq versiyasini qidirib, audiosini yuklaydi."""
+async def download_song(url: str, fallback_query: str, outdir: Path) -> AudioResult | None:
+    """Audioni yuklaydi. YouTube hostingni to'sib qo'ysa — xuddi shu qo'shiqni SoundCloud'dan qidiradi."""
     try:
-        entry = await asyncio.to_thread(_search_song_sync, query)
-        if entry is None:
-            return None
-        url = entry.get("url") or f"https://www.youtube.com/watch?v={entry['id']}"
         return await asyncio.to_thread(_download_audio_sync, url, outdir)
     except (DownloadError, MediaError) as exc:
-        logger.info("Qo'shiqni yuklab bo'lmadi (%s): %s", query, exc)
+        logger.warning("Audio yuklanmadi (%s): %s", url, exc)
+    if "soundcloud.com" in url:
         return None
+    try:
+        found = await asyncio.to_thread(_search_sync, "scsearch", fallback_query, 3)
+        if found:
+            return await asyncio.to_thread(_download_audio_sync, found[0].url, outdir)
+    except Exception as exc:
+        logger.warning("SoundCloud'dan ham yuklab bo'lmadi (%s): %s", fallback_query, exc)
+    return None
+
+
+async def find_and_download_song(query: str, outdir: Path) -> AudioResult | None:
+    """Aniqlangan qo'shiqning to'liq versiyasini qidirib, audiosini yuklaydi."""
+    candidates = await search_songs(query, limit=5)
+    if not candidates:
+        return None
+    return await download_song(candidates[0].url, query, outdir)

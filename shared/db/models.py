@@ -72,3 +72,16 @@ class SongCache(Base):
     shazam_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     youtube_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class JoinRequest(Base):
+    """Bot tasdiqlagan kanalga qo'shilish so'rovlari (statistika uchun)."""
+    __tablename__ = "join_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger)
+    chat_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    message_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

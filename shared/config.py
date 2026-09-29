@@ -44,6 +44,18 @@ class Settings:
     # Masalan: socks5://127.0.0.1:1080 yoki http://user:pass@host:port. Ixtiyoriy.
     PROXY_URL: str = os.getenv("PROXY_URL", "").strip()
 
+    # --- Kanalga qo'shilish so'rovlari (zayavkalar) ---
+    # Bot admin bo'lgan kanal/guruhlarga kelgan so'rovlarni avtomatik tasdiqlash
+    AUTO_APPROVE_JOIN_REQUESTS: bool = os.getenv("AUTO_APPROVE_JOIN_REQUESTS", "true").lower() in ("1", "true", "yes", "ha")
+    # So'rov yuborgan foydalanuvchiga yuboriladigan xabar ({name} — foydalanuvchi ismi, {chat} — kanal nomi)
+    JOIN_WELCOME_TEXT: str = os.getenv(
+        "JOIN_WELCOME_TEXT",
+        "Assalomu alaykum, {name}! 👋\n\n"
+        "✅ «{chat}» kanaliga qo'shilish so'rovingiz qabul qilindi.\n\n"
+        "📥 Men Instagram, YouTube va TikTok videolarini yuklab, undagi qo'shiqni topib beraman. "
+        "Qo'shiq matnidan parcha yozsangiz ham qo'shiqni topaman 🎵",
+    ).replace("\\n", "\n")
+
     ADMIN_PANEL_SECRET_KEY: str = os.getenv("ADMIN_PANEL_SECRET_KEY", "dev-secret-key")
     ADMIN_PANEL_USERNAME: str = os.getenv("ADMIN_PANEL_USERNAME", "admin")
     ADMIN_PANEL_PASSWORD: str = os.getenv("ADMIN_PANEL_PASSWORD", "admin")

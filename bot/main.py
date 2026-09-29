@@ -13,7 +13,7 @@ from aiogram.types import ErrorEvent
 
 from bot.backup_worker import run_backup_worker
 from bot.broadcast_worker import run_broadcast_worker
-from bot.handlers import admin_panel, admin_tools, fallback, media, start
+from bot.handlers import admin_panel, admin_tools, fallback, join_requests, media, music, start
 from bot.middlewares import SubscriptionMiddleware, UserMiddleware
 from shared.config import settings
 from shared.db.database import init_db
@@ -71,6 +71,8 @@ async def main() -> None:
     dp.include_router(admin_tools.router)
     dp.include_router(start.router)
     dp.include_router(media.router)  # Instagram / YouTube / TikTok havolalari
+    dp.include_router(music.router)  # qo'shiq nomi yoki matni bo'yicha qidirish
+    dp.include_router(join_requests.router)  # kanalga qo'shilish so'rovlarini tasdiqlash
     dp.include_router(fallback.router)  # oxirgi bo'lishi kerak: qolgan barcha xabarlar uchun yo'riqnoma
 
     # Telegram serveriga ulanishni tekshiramiz: ulanib bo'lmasa, bot jimgina osilib qolmasin

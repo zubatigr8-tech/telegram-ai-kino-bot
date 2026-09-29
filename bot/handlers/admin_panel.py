@@ -17,7 +17,7 @@ from bot.channels import ChannelError, channel_url, clean_username, fetch_channe
 from bot.states import AdminFlow
 from shared.config import settings
 from shared.db.database import get_session
-from shared.db.models import BroadcastJob, Channel, MediaCache, SongCache, User
+from shared.db.models import BroadcastJob, Channel, JoinRequest, MediaCache, SongCache, User
 
 router = Router(name="admin_panel")
 router.message.filter(F.from_user.id.in_(settings.ADMIN_IDS))
@@ -89,6 +89,9 @@ async def cb_stats(callback: CallbackQuery) -> None:
         total_songs = (
             await session.execute(select(func.count(SongCache.song_key)).where(SongCache.audio_file_id.is_not(None)))
         ).scalar_one()
+        approved_joins = (
+            await session.execute(select(func.count(JoinRequest.id)).where(JoinRequest.approved == True))  # noqa: E712
+        ).scalar_one()
 
     text = (
         "📊 <b>Statistika</b>\n\n"
@@ -99,7 +102,8 @@ async def cb_stats(callback: CallbackQuery) -> None:
         f"⏳ Navbatdagi xabarlar: <b>{pending}</b>\n"
         f"📨 Jami yuborilgan xabarlar: <b>{total_sent}</b>\n"
         f"📥 Yuklangan videolar: <b>{total_downloads}</b>\n"
-        f"🎵 Topilgan qo'shiqlar: <b>{total_songs}</b>"
+        f"🎵 Topilgan qo'shiqlar: <b>{total_songs}</b>\n"
+        f"✅ Tasdiqlangan zayavkalar: <b>{approved_joins}</b>"
     )
     await callback.message.edit_text(text, reply_markup=back_kb())
     await callback.answer()

@@ -22,6 +22,8 @@ videodagi qo'shiqni aniqlab (Shazam), uning to'liq versiyasini audio qilib yubor
 
 - 📥 Instagram (Reels, post), YouTube (video, Shorts), TikTok videolarini yuklash
 - 🎵 Videodagi qo'shiqni aniqlash (Shazam, API kalit shart emas) va to'liq qo'shiqni yuborish
+- ✍️ Qo'shiq nomi yoki **matnidan parcha** bo'yicha qidirish — natijalar ro'yxati, tanlangani audio bo'lib keladi
+- ✅ Kanal/guruhga qo'shilish so'rovlarini (zayavka) avtomatik tasdiqlash va so'rov yuborganlarga xabar
 - ⚡ Kesh: bir xil havola yoki qo'shiq qayta so'ralsa — qayta yuklamasdan darhol yuboriladi
 - 🚦 Navbat: bir vaqtda `MAX_CONCURRENT_DOWNLOADS` tadan ortiq yuklash bo'lmaydi, har bir foydalanuvchi bittadan havola
 - 📢 Majburiy kanal obunasini tekshirish
@@ -169,6 +171,17 @@ Hech narsa qo'shimcha o'rnatish shart emas: `yt-dlp`, `shazamio` va `imageio-ffm
 
 - Ko'p tilli interfeys
 - SQLite o'rniga PostgreSQL (`DATABASE_URL`ni almashtirish kifoya)
+
+## 12. Zayavkalarni avtomatik tasdiqlash
+
+1. Botni kanalga **admin** qiling va unga **"Foydalanuvchilarni qo'shish" (Invite users via link)** huquqini bering.
+2. Kanal havolasini **"Qo'shilish so'rovi" (Request to join)** rejimida yarating.
+3. Kimdir so'rov yuborsa, bot unga xabar yuboradi va so'rovni o'zi tasdiqlaydi.
+
+Sozlamalar: `AUTO_APPROVE_JOIN_REQUESTS` (true/false) va `JOIN_WELCOME_TEXT` (xabar matni).
+Telegram qoidasi: bot bunday foydalanuvchiga faqat so'rov paytida yoza oladi. Keyingi xabarlar
+(broadcast) unga faqat u botga `/start` bosgan bo'lsa yetadi — shuning uchun xabarda "Botni ishga
+tushirish" tugmasi bor.
 
 ## Foydali buyruqlar (faqat adminlar uchun)
 

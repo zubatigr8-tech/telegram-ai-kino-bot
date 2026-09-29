@@ -10,7 +10,8 @@ router = Router(name="start")
 
 HOW_TO_TEXT = (
     "🔗 <b>Instagram</b>, <b>YouTube</b> yoki <b>TikTok</b> havolasini yuboring — "
-    "videoni yuklab, undagi qo'shiqni topib beraman 🎵"
+    "videoni yuklab, undagi qo'shiqni topib beraman 🎵\n\n"
+    "✍️ Yoki qo'shiq nomi, ijrochisi yoki <b>matnidan bir parcha</b> yozing — qo'shiqni topib beraman"
 )
 
 WELCOME_TEXT = "Assalomu alaykum! 👋 Men <b>Video Downloader</b> botman — video va qo'shiqlarni topib beraman.\n\n" + HOW_TO_TEXT

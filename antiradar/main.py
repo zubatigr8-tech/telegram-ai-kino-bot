@@ -53,7 +53,7 @@ async def main() -> None:
         ]
     )
 
-    logger.info("Antiradar bot ishga tushdi...")
+    logger.info("AI Antiradar bot ishga tushdi...")
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 

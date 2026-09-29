@@ -1,6 +1,6 @@
 {
   "choose_language": "🗣 Dil seçin:",
-  "welcome": "👋 Hoş geldiniz! Ben sürücüler için bir <b>antiradar</b> botuyum.\n\nYoldaki hız kameraları ve radarlar hakkında sizi önceden uyarırım.\n\n🎁 <b>{days} günlük ücretsiz deneme</b> verildi ({date} tarihine kadar).",
+  "welcome": "👋 Hoş geldiniz! Ben sürücüler için <b>AI Antiradar</b> botuyum.\n\nYoldaki hız kameraları ve radarlar hakkında sizi önceden uyarırım.\n\n🎁 <b>{days} günlük ücretsiz deneme</b> verildi ({date} tarihine kadar).",
   "how_to": "📍 <b>Nasıl başlatılır:</b>\n1. Alttaki 📎 (ataş) simgesine dokunun\n2. «Konum» seçin\n3. «Canlı Konum Paylaş» seçeneğine dokunup süre seçin (örn. 8 saat)\n\nBundan sonra yolunuzdaki kameralar hakkında uyarırım. Telegram arka planda açık kalmalı.",
   "live_started": "✅ Takip başladı. İyi yolculuklar! 🚗",
   "static_location_hint": "ℹ️ Normal konum gönderdiniz. Uyarılar için <b>Canlı Konum</b> gerekir.",
@@ -19,7 +19,7 @@
   "sub_none": "❌ Aktif abonelik yok.",
   "sub_offer": "⭐ Aylık abonelik: <b>{price} Telegram Stars</b>. Otomatik yenilenir, Telegram ayarlarından istediğiniz zaman iptal edebilirsiniz.",
   "btn_pay": "⭐ Abone ol — {price} Stars",
-  "payment_title": "Antiradar — aylık abonelik",
+  "payment_title": "AI Antiradar — aylık abonelik",
   "payment_description": "Hız kamerası ve radar uyarıları, 30 gün.",
   "payment_success": "🎉 Ödeme alındı! Abonelik <b>{date}</b> tarihine kadar aktif.",
   "menu_subscription": "⭐ Abonelik",

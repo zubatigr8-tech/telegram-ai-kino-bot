@@ -1,6 +1,6 @@
 {
   "choose_language": "🗣 Tilni tanlang:",
-  "welcome": "👋 Xush kelibsiz! Men haydovchilar uchun <b>antiradar</b> botman.\n\nYo'lda tezlik kameralari va radarlarga yaqinlashganingizda oldindan ogohlantiraman.\n\n🎁 Sizga <b>{days} kunlik bepul sinov</b> berildi ({date} gacha).",
+  "welcome": "👋 Xush kelibsiz! Men haydovchilar uchun <b>AI Antiradar</b> botman.\n\nYo'lda tezlik kameralari va radarlarga yaqinlashganingizda oldindan ogohlantiraman.\n\n🎁 Sizga <b>{days} kunlik bepul sinov</b> berildi ({date} gacha).",
   "how_to": "📍 <b>Qanday ishga tushiriladi:</b>\n1. Pastdagi 📎 (skrepka) tugmasini bosing\n2. «Joylashuv» (Location) ni tanlang\n3. «Jonli joylashuvni ulashish» (Share Live Location) ni bosing va muddatni tanlang (masalan 8 soat)\n\nShundan so'ng yo'lda kamera yaqinlashsa, men xabar beraman. Telegram fonda ishlab turishi kerak.",
   "live_started": "✅ Kuzatish boshlandi. Oq yo'l! 🚗",
   "static_location_hint": "ℹ️ Siz oddiy joylashuv yubordingiz. Ogohlantirishlar uchun <b>jonli joylashuv</b> (Live Location) kerak.",
@@ -19,7 +19,7 @@
   "sub_none": "❌ Faol obuna yo'q.",
   "sub_offer": "⭐ Oylik obuna: <b>{price} Telegram Stars</b>. Har oy avtomatik yangilanadi, istalgan vaqtda Telegram sozlamalaridan bekor qilish mumkin.",
   "btn_pay": "⭐ Obuna bo'lish — {price} Stars",
-  "payment_title": "Antiradar — oylik obuna",
+  "payment_title": "AI Antiradar — oylik obuna",
   "payment_description": "Tezlik kameralari va radarlar haqida ogohlantirishlar, 30 kun.",
   "payment_success": "🎉 To'lov qabul qilindi! Obuna <b>{date}</b> gacha faol.",
   "menu_subscription": "⭐ Obuna",

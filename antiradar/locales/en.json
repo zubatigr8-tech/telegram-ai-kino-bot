@@ -1,6 +1,6 @@
 {
   "choose_language": "🗣 Choose your language:",
-  "welcome": "👋 Welcome! I'm an <b>anti-radar</b> bot for drivers.\n\nI warn you in advance about speed cameras and radars on the road.\n\n🎁 You've got a <b>{days}-day free trial</b> (until {date}).",
+  "welcome": "👋 Welcome! I'm <b>AI Antiradar</b>, a bot for drivers.\n\nI warn you in advance about speed cameras and radars on the road.\n\n🎁 You've got a <b>{days}-day free trial</b> (until {date}).",
   "how_to": "📍 <b>How to start:</b>\n1. Tap 📎 (paperclip) below\n2. Choose «Location»\n3. Tap «Share Live Location» and pick a duration (e.g. 8 hours)\n\nAfter that I'll warn you about cameras on your way. Keep Telegram running in the background.",
   "live_started": "✅ Tracking started. Have a safe trip! 🚗",
   "static_location_hint": "ℹ️ You sent a regular location. Alerts need a <b>Live Location</b>.",
@@ -19,7 +19,7 @@
   "sub_none": "❌ No active subscription.",
   "sub_offer": "⭐ Monthly subscription: <b>{price} Telegram Stars</b>. Renews automatically, cancel any time in Telegram settings.",
   "btn_pay": "⭐ Subscribe — {price} Stars",
-  "payment_title": "Anti-radar — monthly subscription",
+  "payment_title": "AI Antiradar — monthly subscription",
   "payment_description": "Speed camera and radar alerts, 30 days.",
   "payment_success": "🎉 Payment received! Subscription active until <b>{date}</b>.",
   "menu_subscription": "⭐ Subscription",

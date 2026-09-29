@@ -1,4 +1,6 @@
-# 🚗 Antiradar bot (haydovchilar uchun)
+# 🚗 AI Antiradar bot (haydovchilar uchun)
+
+BotFather'da tavsiya etilgan nom: **AI Antiradar**, username masalan `@ai_antiradar_uz_bot`.
 
 Telegram bot haydovchining **jonli joylashuvi** (Live Location) bo'yicha tezlik kameralari,
 radarlar va YPX postlariga yaqinlashganda oldindan ogohlantiradi. Hozircha faqat

@@ -3,7 +3,7 @@
 Kino kodini qidirib topadigan, majburiy kanal obunasini tekshiradigan va alohida
 veb-admin panelga ega Telegram bot.
 
-> 🚗 Shu repoda haydovchilar uchun alohida **antiradar bot** ham bor — qarang: [antiradar/README.md](antiradar/README.md)
+> 🚗 Shu repoda haydovchilar uchun alohida **AI Antiradar bot** ham bor — qarang: [antiradar/README.md](antiradar/README.md)
 
 ## Foydalanuvchi uchun oqim
 

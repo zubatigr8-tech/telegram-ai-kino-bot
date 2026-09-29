@@ -1,1 +1,1 @@
-"""Haydovchilar uchun Telegram antiradar bot: jonli joylashuv bo'yicha kamera va radarlardan ogohlantiradi."""
+"""AI Antiradar — haydovchilar uchun Telegram bot: jonli joylashuv bo'yicha kamera va radarlardan ogohlantiradi."""

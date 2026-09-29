@@ -248,3 +248,23 @@ def test_every_kind_has_translation():
     for code in LANGUAGES:
         for kind in RADAR_KINDS + SIGN_KINDS:
             assert t(code, f"kind_{kind}") != f"kind_{kind}", (code, kind)
+
+
+# --- Fayldan import ---
+
+from antiradar.file_import import parse_csv
+
+
+def test_csv_import_parsing():
+    text = "﻿lat;lon;turi;limit\n41,311;69,279;fixed;60\n41.2;69.1;crossing;\nabc;1;fixed;\n41;69;ufo;\n"
+    points, errors = parse_csv(text)
+    assert [(p.lat, p.lon, p.kind, p.speed_limit) for p in points] == [
+        (41.311, 69.279, "fixed", 60),
+        (41.2, 69.1, "crossing", None),
+    ]
+    assert len(errors) == 2
+
+
+def test_csv_without_coordinates():
+    points, errors = parse_csv("name,city\nx,y\n")
+    assert points == [] and errors

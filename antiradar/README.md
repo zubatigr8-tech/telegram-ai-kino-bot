@@ -29,8 +29,10 @@ radarlar, YPX postlari va **yo'l belgilariga** yaqinlashganda oldindan **ovozli*
 - 🚀 Tezlik GPS nuqtalaridan hisoblanadi; kamera limitidan oshsangiz — 🔴 ogohlantirish
 - ⚙️ Shaxsiy tezlik chegarasi (masalan 90 km/soat) — undan oshsangiz eslatadi
 - ⭐ Telegram Stars orqali oylik obuna, sinov davri
-- 👮 Admin: `/stats`, oddiy joylashuv yuborib kamera yoki yo'l belgisi qo'shish, `/delcam <id>`
-- 🗺 OpenStreetMap'dan kameralar va yo'l belgilarini import qilish
+- 🗺 **Radarlar bazasi avtomatik**: bot har kuni OpenStreetMap'dan radar va belgilarni o'zi yangilaydi
+  (OSM'dan o'chirilganlari botdan ham o'chadi). Haydovchilar hech narsa qo'shmaydi
+- 📥 Tayyor ro'yxatni yuklash: admin botga `.csv` fayl yuboradi (rasmiy ro'yxat yoki litsenziyali baza)
+- 👮 Admin: `/stats`, `/osm` (hozir yangilash), oddiy joylashuv yuborib nuqta qo'shish, `/delcam <id>`
 
 ## Sozlash
 
@@ -42,6 +44,7 @@ radarlar, YPX postlari va **yo'l belgilariga** yaqinlashganda oldindan **ovozli*
 | `ANTIRADAR_ADMIN_IDS` | Adminlar ID si, vergul bilan (bo'sh bo'lsa `ADMIN_IDS` olinadi) |
 | `ANTIRADAR_PRICE_STARS` | Oylik obuna narxi, Stars'da (standart 100) |
 | `ANTIRADAR_TRIAL_DAYS` | Bepul sinov kunlari (standart 3) |
+| `ANTIRADAR_OSM_REFRESH_HOURS` | OSM'dan necha soatda bir yangilash (standart 24, `0` — o'chirilgan) |
 | `ANTIRADAR_VOICE` | `false` — ovozsiz, faqat matn (standart `true`) |
 | `ANTIRADAR_DATABASE_URL` | Ixtiyoriy. Standart: `antiradar.db` (SQLite) |
 
@@ -50,15 +53,30 @@ radarlar, YPX postlari va **yo'l belgilariga** yaqinlashganda oldindan **ovozli*
 ```bash
 pip install -r requirements.txt
 
-# 1) Kameralarni OpenStreetMap'dan yuklash (bir marta, keyin vaqti-vaqti bilan yangilash)
-python -m antiradar.osm_import
-
-# 2) Botni ishga tushirish
+# Botni ishga tushirish — radarlar bazasi OSM'dan avtomatik yuklanadi va har kuni yangilanadi
 python -m antiradar.main
+
+# (ixtiyoriy) OSM importini qo'lda ishga tushirish
+python -m antiradar.osm_import
 ```
 
-OSM'da O'zbekiston kameralari va belgilari to'liq emas. Qolganini admin qo'shadi: botga oddiy
-(jonli emas) joylashuv yuboring → kamera turi → tezlik chegarasi.
+## Radarlar qayerdan olinadi
+
+1. **OpenStreetMap** — avtomatik, har kuni. O'zbekiston bo'yicha to'liq emas.
+2. **CSV fayl** — admin botga yuboradi. Ustunlar: `lat`, `lon`, `kind`, `speed_limit`, `direction`
+   (faqat `lat` va `lon` majburiy; `;` yoki `,` bilan ajratilgan, Excel'dan saqlash mumkin):
+
+   ```csv
+   lat;lon;kind;speed_limit
+   41.311081;69.240562;fixed;60
+   41.299496;69.268440;crossing;
+   ```
+   `kind` qiymatlari: `fixed`, `mobile`, `red_light`, `average`, `police`, `speed_limit`, `crossing`,
+   `stop`, `give_way`, `speed_bump`, `railway_crossing`, `children`. 15 m ichidagi takrorlar o'tkazib yuboriladi.
+3. **Qo'lda** — admin botga oddiy (jonli emas) joylashuv yuboradi → turi → tezlik chegarasi.
+
+> Mobil radarlar (YPX qo'lda ushlab turadigan) joyi har kuni o'zgaradi — ularni hech qanday
+> bazadan avtomatik bilib bo'lmaydi.
 
 ## Testlar
 
@@ -79,13 +97,13 @@ antiradar/
 ├── voice.py         # ovozli xabar (TTS + kesh)
 ├── i18n.py          # tarjimalar
 ├── locales/         # uz / ru / en / tr
-├── osm_import.py    # OpenStreetMap importi
+├── osm_import.py    # OpenStreetMap importi + kunlik avtomatik yangilash
+├── file_import.py   # CSV fayldan import
 └── handlers/        # start, settings, subscription, location, admin
 ```
 
 ## Keyingi bosqichlar
 
-- Haydovchilar o'zlari kamera/YPX postini qo'shishi va tasdiqlashi (👍/👎)
 - Admin veb-panelda xarita
 - Boshqa davlatlar (Markaziy Osiyo, Turkiya, Yevropa, AQSh) — `/start`da davlat tanlash
 - AI: ovozli buyruqlar, yo'l qoidalari bo'yicha yordamchi

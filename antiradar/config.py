@@ -32,6 +32,8 @@ class Settings:
     VOICE_ENABLED: bool = os.getenv("ANTIRADAR_VOICE", "true").lower() not in ("0", "false", "no")
     VOICE_CACHE_DIR: str = os.getenv("ANTIRADAR_VOICE_CACHE_DIR", str(BASE_DIR / "voice_cache"))
 
+    # Bot OpenStreetMap'dan radar va belgilarni necha soatda bir yangilaydi (0 — o'chirilgan)
+    OSM_REFRESH_HOURS: float = float(os.getenv("ANTIRADAR_OSM_REFRESH_HOURS", "24"))
     OVERPASS_URL: str = os.getenv("ANTIRADAR_OVERPASS_URL", "https://overpass-api.de/api/interpreter")
 
 

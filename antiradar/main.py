@@ -11,6 +11,7 @@ from antiradar.config import settings
 from antiradar.db import init_db
 from antiradar.handlers import admin, location, settings as settings_handlers, start, subscription
 from antiradar.middlewares import UserMiddleware
+from antiradar.osm_import import run_osm_worker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 logger = logging.getLogger(__name__)
@@ -54,12 +55,17 @@ async def main() -> None:
     )
 
     logger.info("AI Antiradar bot ishga tushdi...")
-    warmup = asyncio.create_task(location.warm_voice_cache())
+    workers = [
+        asyncio.create_task(location.warm_voice_cache()),
+        # Radar va belgilar bazasini OSM'dan avtomatik yangilab turadi, keyin yangi iboralarni tayyorlaydi
+        asyncio.create_task(run_osm_worker(on_updated=location.warm_voice_cache)),
+    ]
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
-        warmup.cancel()
-        await asyncio.gather(warmup, return_exceptions=True)
+        for task in workers:
+            task.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
 
 
 if __name__ == "__main__":

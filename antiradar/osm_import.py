@@ -3,9 +3,11 @@
 Ishlatish:  python -m antiradar.osm_import          (standart: O'zbekiston)
             python -m antiradar.osm_import KZ       (boshqa davlat, ISO kodi)
 Qayta ishga tushirilsa, mavjud kameralar yangilanadi (osm_id bo'yicha), takror qo'shilmaydi.
+Bot ishlayotganda buni o'zi har OSM_REFRESH_HOURS soatda bajaradi (run_osm_worker).
 """
 import asyncio
 import json
+import logging
 import re
 import sys
 import urllib.parse
@@ -15,6 +17,8 @@ from sqlalchemy import select
 
 from antiradar.config import settings
 from antiradar.db import Camera, get_session, init_db
+
+logger = logging.getLogger(__name__)
 
 MPH_TO_KMH = 1.609344
 CARDINALS = {
@@ -99,14 +103,18 @@ def fetch(country: str) -> list[dict]:
         return json.loads(response.read())["elements"]
 
 
-async def import_country(country: str) -> tuple[int, int]:
+async def import_country(country: str) -> tuple[int, int, int]:
+    """(qo'shildi, yangilandi, o'chirildi) qaytaradi."""
     await init_db()
     elements = await asyncio.to_thread(fetch, country)
-    added = updated = 0
+    added = updated = removed = 0
+    seen: set[int] = set()
     async with get_session() as session:
         existing = {
             c.osm_id: c
-            for c in await session.scalars(select(Camera).where(Camera.osm_id.is_not(None)))
+            for c in await session.scalars(
+                select(Camera).where(Camera.osm_id.is_not(None), Camera.country == country)
+            )
         }
         for el in elements:
             if el.get("type") != "node":
@@ -115,6 +123,7 @@ async def import_country(country: str) -> tuple[int, int]:
             kind = parse_kind(tags)
             if kind is None:
                 continue
+            seen.add(el["id"])
             fields = dict(
                 country=country,
                 lat=el["lat"],
@@ -122,6 +131,7 @@ async def import_country(country: str) -> tuple[int, int]:
                 kind=kind,
                 speed_limit=parse_maxspeed(tags.get("maxspeed")),
                 direction=parse_direction(tags.get("direction") or tags.get("camera:direction")),
+                is_active=True,
             )
             camera = existing.get(el["id"])
             if camera is None:
@@ -133,14 +143,38 @@ async def import_country(country: str) -> tuple[int, int]:
                 for key, value in fields.items():
                     setattr(camera, key, value)
                 updated += 1
+        # OSM'dan olib tashlangan nuqtalarni o'chiramiz. Javob bo'sh bo'lsa (server nosozligi
+        # bo'lishi mumkin) — hech narsani o'chirmaymiz.
+        if seen:
+            for osm_id, camera in existing.items():
+                if osm_id not in seen and camera.is_active:
+                    camera.is_active = False
+                    removed += 1
         await session.commit()
-    return added, updated
+    return added, updated, removed
+
+
+async def run_osm_worker(on_updated=None) -> None:
+    """Bot ichida fon vazifasi: ishga tushganda va har OSM_REFRESH_HOURS soatda OSM'dan yangilaydi."""
+    if settings.OSM_REFRESH_HOURS <= 0:
+        return
+    while True:
+        try:
+            added, updated, removed = await import_country(settings.COUNTRY)
+            logger.info("OSM yangilandi: +%s, ~%s, -%s", added, updated, removed)
+            if on_updated is not None:
+                await on_updated()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.warning("OSM'dan yangilab bo'lmadi: %s", exc)
+        await asyncio.sleep(settings.OSM_REFRESH_HOURS * 3600)
 
 
 def main() -> None:
     country = (sys.argv[1] if len(sys.argv) > 1 else settings.COUNTRY).upper()
-    added, updated = asyncio.run(import_country(country))
-    print(f"{country}: {added} ta yangi nuqta (kamera/belgi) qo'shildi, {updated} ta yangilandi.")
+    added, updated, removed = asyncio.run(import_country(country))
+    print(f"{country}: {added} ta yangi nuqta (kamera/belgi) qo'shildi, {updated} ta yangilandi, {removed} ta o'chirildi.")
 
 
 if __name__ == "__main__":

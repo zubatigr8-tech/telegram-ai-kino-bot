@@ -1,8 +1,10 @@
 """Admin buyruqlari (faqat ANTIRADAR_ADMIN_IDS uchun):
 - /stats — statistika;
 - oddiy (jonli emas) joylashuv yuborish → shu nuqtaga kamera yoki yo'l belgisi qo'shish;
-- /delcam <id> — kamerani o'chirish."""
-from aiogram import F, Router
+- /delcam <id> — kamerani o'chirish;
+- .csv fayl yuborish — tayyor ro'yxatdan radar/belgilarni yuklash (antiradar/file_import.py);
+- /osm — OpenStreetMap'dan hozir yangilash (bot buni har kuni o'zi ham qiladi)."""
+from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy import func, or_, select
@@ -10,6 +12,8 @@ from sqlalchemy import func, or_, select
 from antiradar.alerts import RADAR_KINDS, SIGN_KINDS
 from antiradar.config import settings
 from antiradar.db import Camera, Payment, User, get_session, utcnow
+from antiradar.file_import import parse_csv, save_points
+from antiradar.osm_import import import_country
 
 router = Router(name="admin")
 router.message.filter(F.from_user.id.in_(settings.ADMIN_IDS))
@@ -126,3 +130,36 @@ async def cmd_delcam(message: Message, command: CommandObject) -> None:
         camera.is_active = False
         await session.commit()
     await message.answer(f"🗑 Kamera {arg} o'chirildi.")
+
+
+MAX_CSV_BYTES = 5 * 1024 * 1024
+
+
+@router.message(F.document.file_name.lower().endswith(".csv"))
+async def import_csv(message: Message, bot: Bot) -> None:
+    if message.document.file_size and message.document.file_size > MAX_CSV_BYTES:
+        await message.answer("Fayl juda katta (5 MB dan oshmasin).")
+        return
+    buffer = await bot.download(message.document)
+    raw = buffer.read()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw.decode("cp1251")  # Excel'ning ruscha Windows kodirovkasi
+    points, errors = parse_csv(text)
+    added, skipped = await save_points(points)
+    report = f"📥 Import: ✅ {added} ta qo'shildi, ↩️ {skipped} ta takror, ❌ {len(errors)} ta xato."
+    if errors:
+        report += "\n\n" + "\n".join(errors[:10])
+    await message.answer(report)
+
+
+@router.message(Command("osm"))
+async def cmd_osm(message: Message) -> None:
+    await message.answer("⏳ OpenStreetMap'dan yangilanmoqda...")
+    try:
+        added, updated, removed = await import_country(settings.COUNTRY)
+    except Exception as exc:
+        await message.answer(f"❌ Xatolik: {exc}")
+        return
+    await message.answer(f"✅ OSM: +{added} yangi, {updated} yangilandi, -{removed} o'chirildi.")

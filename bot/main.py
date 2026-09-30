@@ -92,6 +92,10 @@ async def main() -> None:
         await bot.session.close()
         raise SystemExit("\n❌ BOT_TOKEN noto'g'ri yoki bekor qilingan. @BotFather → /mybots → API Token'dan yangisini oling.")
     logger.info("✅ Bot ishga tushdi: @%s — Telegram'da aynan shu botga yozing", me.username)
+    if settings.ADMIN_IDS:
+        logger.info("Adminlar (ADMIN_IDS): %s", ", ".join(map(str, sorted(settings.ADMIN_IDS))))
+    else:
+        logger.warning("ADMIN_IDS bo'sh yoki noto'g'ri — /admin hech kimga ochilmaydi. Botga /myid yozib ID'ni oling.")
     workers = [
         asyncio.create_task(run_broadcast_worker(bot)),
         asyncio.create_task(run_backup_worker()),

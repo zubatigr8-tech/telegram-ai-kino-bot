@@ -29,6 +29,17 @@ async def server_info(message: Message) -> None:
     await message.answer(f"{where}\n⏱ Ishga tushganiga: {hours} soat {rest // 60} daqiqa")
 
 
+@router.message(Command("admin", "server"))
+async def not_admin(message: Message) -> None:
+    # Adminlar uchun /admin va /server yuqoridagi handlerlarda ishlaydi; bu yerga faqat
+    # ADMIN_IDS'da yo'q foydalanuvchi tushadi — unga sababini tushuntiramiz
+    await message.answer(
+        "⛔️ Bu buyruq faqat adminlar uchun.\n\n"
+        f"Sizning Telegram ID'ingiz: <code>{message.from_user.id}</code>\n\n"
+        "Agar bot egasi siz bo'lsangiz — hostingdagi <b>ADMIN_IDS</b> sozlamasiga shu raqamni yozing."
+    )
+
+
 @router.message(Command("myid"))
 async def my_id(message: Message) -> None:
     await message.answer(f"Sizning Telegram ID'ingiz: <code>{message.from_user.id}</code>")

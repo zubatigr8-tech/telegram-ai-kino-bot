@@ -7,7 +7,8 @@ from html import escape as h
 from aiogram import Bot
 from sqlalchemy import select
 
-from shared.config import settings
+from bot.services import all_admin_ids
+
 from shared.db.database import get_session
 from shared.db.models import Channel
 
@@ -124,7 +125,7 @@ async def _warn_admins(bot: Bot, channel: Channel) -> None:
         "bu kanal obuna tekshiruvida hisobga olinmaydi.\n"
         "Botni kanalga admin qilib qo'shing."
     )
-    for admin_id in settings.ADMIN_IDS:
+    for admin_id in all_admin_ids():
         try:
             await bot.send_message(admin_id, text)
         except Exception:

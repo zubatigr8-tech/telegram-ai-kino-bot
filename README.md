@@ -9,13 +9,20 @@ veb-admin panelga ega Telegram bot.
 2. Majburiy kanal(lar)ga obuna bo'lishi so'raladi → obuna bo'lib **✅ Tekshirish**ni bosadi
 3. Kino kodini (raqam) yuboradi → bot kinoni yuboradi
 
+Pastki menyuda **🎬 Shorts** (qisqa videolar, "To'liq kino" tugmasi bilan) va
+**💎 Premium** (kartaga to'lov → chek → admin tasdig'i; premium foydalanuvchi
+majburiy kanallarga obuna bo'lmasdan kinolarni oladi) tugmalari bor.
+Kanal postidagi **🎬 Kinoni ko'rish** tugmasi botni `/start <kod>` bilan ochadi va
+kinoni (obuna tekshiruvidan keyin) darhol yuboradi.
+
 ## Imkoniyatlar
 
 - 🎬 Kino kodi (raqam) orqali video/fayl topib berish
 - 📢 Majburiy kanal obunasini tekshirish
 - 👤 Foydalanuvchilarni bazada saqlash, bloklash
 - ⚙️ Alohida veb-admin panel (statistika, foydalanuvchilar, kinolar, kanallar, xabar yuborish)
-- 📱 Xuddi shu boshqaruv botning o'zida ham — `/admin` buyrug'i (faqat adminlarga ko'rinadi)
+- 📱 Botning o'zida to'liq admin panel — `/admin` (kinolar, shorts, kanallar, premium, adminlar)
+- 💎 Premium (kartaga to'lov, chekni admin tasdiqlaydi) va 🎬 Shorts
 - 🔔 Barcha foydalanuvchilarga avtomatik xabar yuborish (broadcast)
 
 ## Tuzilma
@@ -79,11 +86,28 @@ Admin panel ochiladi: **http://localhost:8000** (login/parolni `.env`dagi
 
 ## 4. Bot ichidagi admin panel
 
-Veb-panelga qo'shimcha ravishda, `ADMIN_IDS`dagi foydalanuvchilar botning o'zida
-**`/admin`** buyrug'i orqali ham boshqarishlari mumkin: statistika, foydalanuvchilar
-(bloklash), kinolar (ko'rish + qo'shish), kanallar (qo'shish/o'chirish) va xabar
-yuborish — hammasi inline tugmalar orqali. Oddiy foydalanuvchilarga bu buyruq
-umuman ko'rinmaydi.
+Adminlar botda **`/admin`** (yoki **📋 Boshqarish** tugmasi) orqali pastki menyuli
+admin panelni ochadi:
+
+| Tugma | Vazifasi |
+|---|---|
+| 📣 Kanallarni sozlash | Majburiy kanallar: qo'shish (post forward / ID / @username), yoqish/o'chirish, zayavkalarni avto-tasdiqlash |
+| 📈 Statistika | Foydalanuvchilar, faollik, premium, kinolar, ko'rishlar, eng ko'p ko'rilgan kinolar |
+| ✉️ Xabar yuborish | Istalgan xabar (matn/rasm/video) nusxasi barcha foydalanuvchilarga, xohlasangiz kanallarga ham |
+| 🤖 Bot holati | Ishlash vaqti, navbatdagi xabarlar, to'lovlar, har bir kanalda bot admin ekanligi |
+| 📥 Kino yuklash / 🗑 Kino o'chirish / ✏️ Kino tahrirlash | Kinolar (nom, tavsif, kod, fayl) |
+| 📣 Kino postini yuborish | Kanalga poster + "🎬 Kinoni ko'rish" tugmali post |
+| 🎬 Shorts yuklash / 🗑 Shorts o'chirish | Qisqa videolar (kino kodiga bog'lash mumkin) |
+| 💳 Karta sozlamalari | Premium to'lovi uchun karta raqami, egasi va narx |
+| 👤 Boshqarish | ID bo'yicha foydalanuvchi: bloklash, premium berish/olish, admin qilish |
+| 👑 Adminlar ro'yxati / 💎 Premiumlar ro'yxati | Ro'yxatlar |
+| 🔄 Premium holati | Premiumni yoqish/o'chirish, kutilayotgan to'lovlar |
+
+`.env`dagi `ADMIN_IDS` — asosiy adminlar; faqat ular boshqa adminlarni qo'sha/o'chira oladi.
+Bot orqali qo'shilgan adminlar bazada saqlanadi.
+
+**Kanal zayavkalari:** bot admin bo'lgan majburiy kanalga "qo'shilish so'rovi" kelsa, bot uni
+avtomatik tasdiqlaydi (sozlamadan o'chirish mumkin) va so'rov egasiga botni ochish tugmasi bilan xabar yuboradi.
 
 ## 6. Kino qo'shish tartibi
 

@@ -12,14 +12,18 @@ from aiogram.types import User as TgUser
 from sqlalchemy.exc import IntegrityError
 
 from bot.channels import ensure_channel_links, get_active_channels, is_subscribed
-from bot.keyboards import subscription_keyboard
-from shared.config import settings
+from bot.keyboards import BTN_PREMIUM, subscription_keyboard
+from bot.states import UserFlow
+from bot.services import all_admin_ids, is_admin as check_admin, premium_enabled, user_is_premium
 from shared.db.database import get_session
 from shared.db.models import User, utcnow
 
 logger = logging.getLogger(__name__)
 
 EXEMPT_CALLBACKS = {"check_subscription"}
+# Premium sotib olish obunasiz ham ishlashi kerak (premium aynan obunadan ozod qiladi)
+EXEMPT_CALLBACK_PREFIXES = ("prem:",)
+PENDING_CODE_KEY = "pending_code"
 LAST_ACTIVE_UPDATE_INTERVAL = datetime.timedelta(minutes=5)
 
 
@@ -30,22 +34,22 @@ def is_start_command(event: TelegramObject) -> bool:
     return command == "/start"
 
 
-async def upsert_user(tg_user: TgUser, create: bool = True) -> tuple[bool, bool, bool]:
-    """Foydalanuvchini bazaga yozadi/yangilaydi. (exists, is_new, is_blocked) qaytaradi.
+async def upsert_user(tg_user: TgUser, create: bool = True) -> tuple[bool, bool, bool, bool]:
+    """Foydalanuvchini bazaga yozadi/yangilaydi. (exists, is_new, is_blocked, is_premium) qaytaradi.
     create=False bo'lsa, bazada yo'q foydalanuvchi yaratilmaydi."""
     async with get_session() as session:
         user = await session.get(User, tg_user.id)
         if user is None:
             if not create:
-                return False, False, False
+                return False, False, False, False
             session.add(User(tg_id=tg_user.id, username=tg_user.username, full_name=tg_user.full_name))
             try:
                 await session.commit()
             except IntegrityError:
                 # Bir vaqtda kelgan ikki xabar — foydalanuvchi allaqachon yozib bo'lingan
                 await session.rollback()
-                return True, False, False
-            return True, True, False
+                return True, False, False, False
+            return True, True, False, False
 
         changed = False
         if user.username != tg_user.username or user.full_name != tg_user.full_name:
@@ -61,7 +65,7 @@ async def upsert_user(tg_user: TgUser, create: bool = True) -> tuple[bool, bool,
             changed = True
         if changed:
             await session.commit()
-        return True, False, user.is_blocked
+        return True, False, user.is_blocked, user_is_premium(user)
 
 
 async def notify_admins_new_user(bot, tg_user: TgUser) -> None:
@@ -71,7 +75,7 @@ async def notify_admins_new_user(bot, tg_user: TgUser) -> None:
         f"👤 {h(label)}\n"
         f"ID: <code>{tg_user.id}</code>"
     )
-    for admin_id in settings.ADMIN_IDS:
+    for admin_id in all_admin_ids():
         try:
             await bot.send_message(admin_id, text)
         except Exception:
@@ -99,12 +103,15 @@ class UserMiddleware(BaseMiddleware):
         if user is None or user.is_bot or (chat is not None and chat.type != "private"):
             return await handler(event, data)
 
-        is_admin = user.id in settings.ADMIN_IDS
+        is_admin = check_admin(user.id)
         try:
-            exists, is_new, is_blocked = await upsert_user(user, create=is_admin or is_start_command(event))
+            exists, is_new, is_blocked, is_premium = await upsert_user(user, create=is_admin or is_start_command(event))
         except Exception:
             logger.exception("Foydalanuvchini bazaga yozib bo'lmadi: %s", user.id)
             return await handler(event, data)
+
+        data["is_admin"] = is_admin
+        data["is_premium"] = is_premium
 
         if not exists:
             if isinstance(event, CallbackQuery):
@@ -139,10 +146,18 @@ class SubscriptionMiddleware(BaseMiddleware):
         if user is None or bot is None:
             return await handler(event, data)
 
-        if user.id in settings.ADMIN_IDS:
+        # Adminlar va premium foydalanuvchilar majburiy obunadan ozod
+        if data.get("is_admin") or data.get("is_premium"):
             return await handler(event, data)
 
-        if isinstance(event, CallbackQuery) and event.data in EXEMPT_CALLBACKS:
+        if isinstance(event, CallbackQuery) and (
+            event.data in EXEMPT_CALLBACKS or (event.data or "").startswith(EXEMPT_CALLBACK_PREFIXES)
+        ):
+            return await handler(event, data)
+        if isinstance(event, Message) and event.text == BTN_PREMIUM:
+            return await handler(event, data)
+        state = data.get("state")
+        if state is not None and await state.get_state() == UserFlow.send_receipt.state:
             return await handler(event, data)
 
         channels = await get_active_channels()
@@ -156,8 +171,15 @@ class SubscriptionMiddleware(BaseMiddleware):
             "📢 Botdan foydalanish uchun quyidagi kanal(lar)ga obuna bo'ling, "
             "so'ng \"✅ Tekshirish\" tugmasini bosing:"
         )
+        # Kanal postidagi "Kinoni ko'rish" tugmasidan kelgan kodni eslab qolamiz —
+        # obuna tasdiqlangach kino darhol yuboriladi
+        if isinstance(event, Message) and state is not None and is_start_command(event):
+            parts = (event.text or "").split(maxsplit=1)
+            if len(parts) == 2 and parts[1].strip().isdigit() and len(parts[1].strip()) <= 9:
+                await state.update_data({PENDING_CODE_KEY: int(parts[1].strip())})
+
         await ensure_channel_links(bot, channels)
-        kb = subscription_keyboard(channels)
+        kb = subscription_keyboard(channels, await premium_enabled())
         if isinstance(event, Message):
             await event.answer(text, reply_markup=kb)
         elif isinstance(event, CallbackQuery):

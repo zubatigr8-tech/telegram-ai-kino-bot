@@ -16,6 +16,11 @@ async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncS
 # create_all faqat yangi jadval yaratadi, eski jadvalga ustun qo'shmaydi — shuning uchun shu yerda qo'shamiz.
 _ADDED_COLUMNS = [
     ("channels", "invite_link", "VARCHAR(255)"),
+    ("users", "premium_until", "DATETIME"),
+    ("movies", "views", "INTEGER NOT NULL DEFAULT 0"),
+    ("broadcast_jobs", "copy_from_chat_id", "BIGINT"),
+    ("broadcast_jobs", "copy_message_id", "INTEGER"),
+    ("broadcast_jobs", "to_channels", "BOOLEAN NOT NULL DEFAULT 0"),
 ]
 
 

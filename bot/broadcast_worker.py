@@ -7,7 +7,7 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, Teleg
 from sqlalchemy import select, update
 
 from shared.db.database import get_session
-from shared.db.models import BroadcastJob, User
+from shared.db.models import BroadcastJob, Channel, User
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,10 @@ MAX_RETRIES = 3
 
 
 async def _send(bot: Bot, user_id: int, job: BroadcastJob, parse_mode) -> None:
-    if job.photo_file_id:
+    if job.copy_message_id:
+        # Botda yuborilgan xabarning aynan nusxasi (matn, rasm, video, tugmalar bilan)
+        await bot.copy_message(user_id, job.copy_from_chat_id, job.copy_message_id)
+    elif job.photo_file_id:
         # Rasm izohi (caption) 1024 belgidan oshmasligi kerak
         await bot.send_photo(user_id, job.photo_file_id, caption=job.text[:1024], parse_mode=parse_mode)
     else:
@@ -70,6 +73,14 @@ async def _process_job(bot: Bot, job: BroadcastJob) -> None:
         if i % PROGRESS_SAVE_EVERY == 0:
             await _set_job(job.id, sent_count=sent)
         await asyncio.sleep(DELAY_BETWEEN_MESSAGES)
+
+    if job.to_channels:
+        # Bot admin bo'lgan majburiy kanallarga ham post qilamiz — kanal obunachilari ham ko'radi
+        async with get_session() as session:
+            channel_ids = [row[0] for row in (await session.execute(select(Channel.chat_id))).all()]
+        for chat_id in channel_ids:
+            if await _send_one(bot, chat_id, job):
+                sent += 1
 
     await _set_job(job.id, status="done", sent_count=sent)
     logger.info("Broadcast #%s yakunlandi: %s/%s", job.id, sent, len(user_ids))

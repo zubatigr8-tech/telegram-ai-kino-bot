@@ -1,4 +1,6 @@
-# 🎞 Video sifatini oshiruvchi Telegram bot
+# 🎞 Jonli Kadr — video sifatini oshiruvchi Telegram bot
+
+Telegram: **@JonliKadrBot**
 
 Obunachi eski yoki sifati past videoni (masalan, 15 yil oldingi kinodan lavha) yuboradi —
 bot uni kattalashtiradi, shovqindan tozalaydi, ranglarini yorqin qiladi va tiniqlashtirib qaytaradi.
@@ -56,8 +58,31 @@ pip install -r video_enhancer_bot/requirements.txt
 cp video_enhancer_bot/.env.example video_enhancer_bot/.env
 ```
 
-Eng kamida `BOT_TOKEN` kiritiladi — [@BotFather](https://t.me/BotFather) → `/newbot` orqali
-**yangi** bot yarating (kino bot tokenini ishlatmang). Qolgan sozlamalar `.env.example`da izohlangan.
+Eng kamida `BOT_TOKEN` kiritiladi. Qolgan sozlamalar `.env.example`da izohlangan.
+
+### @BotFather'da botni yaratish
+
+1. [@BotFather](https://t.me/BotFather) → `/newbot`
+2. Nomi: `🎞 Jonli Kadr`
+3. Username: `JonliKadrBot` (band bo'lsa: `JonliKadr_uzbot`)
+4. Berilgan tokenni `.env`dagi `BOT_TOKEN`ga qo'ying (kino bot tokenini ishlatmang)
+5. `/setdescription` — bot ochilganda "Start" tugmasi ustida chiqadigan matn:
+   ```
+   🎞 Eski videolaringizga yangi hayot bering!
+
+   Sifati past, xira yoki eski kinodan lavha yuboring — men uni:
+   🔍 HD / Full HD ga kattalashtiraman
+   🧹 shovqindan tozalayman
+   🌈 ranglarini yorqin va jonli qilaman
+   ✨ tiniqlashtiraman
+
+   Boshlash uchun «Start» ni bosing 👇
+   ```
+6. `/setabouttext` — bot profilidagi qisqa matn (120 belgigacha):
+   ```
+   Eski va sifati past videolarni HD, yorqin va tiniq qilib beraman 🎞✨
+   ```
+7. `/setuserpic` — bot rasmi (masalan, kinoplyonka + sehrli tayoqcha tasviri)
 
 ## Ishga tushirish
 

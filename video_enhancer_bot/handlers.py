@@ -12,7 +12,7 @@ from video_enhancer_bot.media import PRESETS
 router = Router(name="enhancer")
 
 WELCOME_TEXT = (
-    "Assalomu alaykum! 👋\n\n"
+    "Assalomu alaykum! 👋 <b>Jonli Kadr</b> botiga xush kelibsiz 🎞\n\n"
     "🎬 Menga eski yoki sifati past videoni yuboring — men uni:\n"
     "• 🔍 yuqori aniqlikka (HD / Full HD) kattalashtiraman\n"
     "• 🧹 shovqin va \"g'ira-shira\"likdan tozalayman\n"

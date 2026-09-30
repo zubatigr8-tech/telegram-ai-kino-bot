@@ -23,6 +23,7 @@ bot uni kattalashtiradi, shovqindan tozalaydi, ranglarini yorqin qiladi va tiniq
 | Shovqinni tozalash (`hqdn3d`) | Donador, "qor yog'ayotgan"dek tasvir |
 | Kattalashtirish (`lanczos` yoki **AI**) | 360p/480p → 1080p (yoki 4K) |
 | Debanding | Siqilgan videodagi osmon/devorlardagi "zinapoya" gradientlar |
+| Avtomatik rang tiklash (`normalize`) | Eski plyonkaning sarg'ish/ko'kish tusi va xiraligini olib tashlash |
 | Kontrast, gamma, to'yinganlik, vibrance | Xira, "yuvilgan" ranglarni jonlantirish |
 | Tiniqlashtirish (`cas`) | Yumshoq, loyqa chegaralarni aniqlashtirish |
 
@@ -109,8 +110,8 @@ docker run --env-file video_enhancer_bot/.env video-enhancer
    ```
    ENGINE=realesrgan
    REALESRGAN_BIN=/yo'l/realesrgan-ncnn-vulkan
-   REALESRGAN_MODEL=realesr-animevideov3   # tez; real kinolar uchun realesrgan-x4plus + SCALE=4
-   REALESRGAN_SCALE=2
+   REALESRGAN_MODEL=realesrgan-x4plus   # tezroq variant: realesr-animevideov3 + SCALE=2
+   REALESRGAN_SCALE=4
    ```
 Bot videoni kadrlarga ajratadi, har bir kadrni AI bilan kattalashtiradi, so'ng ovoz bilan
 qayta yig'ib, rang/tiniqlik beradi.

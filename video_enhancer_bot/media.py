@@ -46,12 +46,14 @@ class Preset:
     vibrance: float
     sharpen: float  # cas filtri kuchi, 0..1
     denoise: str  # hqdn3d parametrlari
+    # Avtomatik rang tiklash kuchi (0..1): xiralikni cho'zib, eski plyonkaning sarg'ish/ko'kish tusini olib tashlaydi
+    restore: float
 
 
 PRESETS: dict[str, Preset] = {
-    "auto": Preset("auto", "✨ Avtomatik (tavsiya)", 1.22, 1.08, 0.02, 0.97, 0.15, 0.55, "3:2:4:3"),
-    "vivid": Preset("vivid", "🌈 Juda yorqin ranglar", 1.45, 1.14, 0.03, 0.95, 0.30, 0.65, "3:2:4:3"),
-    "natural": Preset("natural", "🎞 Tabiiy (faqat tiniqlik)", 1.05, 1.03, 0.0, 1.0, 0.0, 0.5, "2:1.5:3:2.5"),
+    "auto": Preset("auto", "✨ Avtomatik (tavsiya)", 1.22, 1.08, 0.02, 0.97, 0.15, 0.55, "3:2:4:3", 0.8),
+    "vivid": Preset("vivid", "🌈 Juda yorqin ranglar", 1.45, 1.14, 0.03, 0.95, 0.30, 0.65, "3:2:4:3", 1.0),
+    "natural": Preset("natural", "🎞 Tabiiy (faqat tiniqlik)", 1.05, 1.03, 0.0, 1.0, 0.0, 0.5, "2:1.5:3:2.5", 0.4),
 }
 
 
@@ -123,6 +125,10 @@ def cleanup_filters(preset: Preset) -> list[str]:
 def finish_filters(preset: Preset, size: tuple[int, int] | None) -> list[str]:
     """Kattalashtirish (kerak bo'lsa), rang, kontrast va tiniqlik."""
     filters = []
+    if preset.restore:
+        # Har bir rang kanalini alohida qora/oq nuqtaga cho'zadi (independence) — rang og'ishini tuzatadi.
+        # smoothing: bir necha soniya bo'yi o'rtachalanadi, shunda yorug'lik kadrdan-kadrga "miltillamaydi".
+        filters.append(f"normalize=smoothing=50:independence=0.8:strength={preset.restore}")
     if size:
         filters.append(f"scale={size[0]}:{size[1]}:flags=lanczos")
     filters += [

@@ -45,8 +45,8 @@ class Settings:
 
     # --- Real-ESRGAN (lokal, GPU tavsiya etiladi) ---
     REALESRGAN_BIN: str = os.getenv("REALESRGAN_BIN", "realesrgan-ncnn-vulkan")
-    REALESRGAN_MODEL: str = os.getenv("REALESRGAN_MODEL", "realesr-animevideov3")
-    REALESRGAN_SCALE: int = int(os.getenv("REALESRGAN_SCALE", "2"))
+    REALESRGAN_MODEL: str = os.getenv("REALESRGAN_MODEL", "realesrgan-x4plus")
+    REALESRGAN_SCALE: int = int(os.getenv("REALESRGAN_SCALE", "4"))
     REALESRGAN_GPU: str = os.getenv("REALESRGAN_GPU", "")  # masalan "0"; bo'sh = avtomatik
 
     # --- Replicate (bulutli AI, pullik) ---

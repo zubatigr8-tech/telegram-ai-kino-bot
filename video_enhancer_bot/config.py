@@ -54,6 +54,7 @@ class Settings:
 
     # --- Replicate (bulutli AI, pullik) ---
     REPLICATE_API_TOKEN: str = os.getenv("REPLICATE_API_TOKEN", "")
+    REPLICATE_API_URL: str = os.getenv("REPLICATE_API_URL", "https://api.replicate.com/v1")
     REPLICATE_MODEL: str = os.getenv("REPLICATE_MODEL", "topazlabs/video-upscale")
     # Model video faylni qaysi maydon nomi bilan qabul qiladi
     REPLICATE_VIDEO_FIELD: str = os.getenv("REPLICATE_VIDEO_FIELD", "video")

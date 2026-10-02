@@ -7,12 +7,12 @@ import aiohttp
 
 from video_enhancer_bot.config import settings
 from video_enhancer_bot.media import (
-    MediaError, Preset, ProgressCallback, VideoInfo, encode_within_limit, finish_filters,
+    MediaError, Preset, ProgressCallback, VideoInfo, encode_within_limit, finish_filters, probe, target_size,
 )
 
 logger = logging.getLogger(__name__)
 
-API = "https://api.replicate.com/v1"
+API = settings.REPLICATE_API_URL.rstrip("/")
 
 
 class ReplicateEngine:
@@ -30,7 +30,10 @@ class ReplicateEngine:
         headers = {"Authorization": f"Bearer {settings.REPLICATE_API_TOKEN}"}
         remote_result = workdir / "remote.mp4"
 
-        async with aiohttp.ClientSession(headers=headers) as http:
+        # Standart aiohttp limiti (5 daqiqa) katta faylni yuklab olishda uzib qo'yadi — umumiy limitsiz,
+        # lekin har bir o'qish uchun 2 daqiqa
+        http_timeout = aiohttp.ClientTimeout(total=None, sock_connect=30, sock_read=120)
+        async with aiohttp.ClientSession(headers=headers, timeout=http_timeout) as http:
             # 1) Faylni Replicate'ga yuklash
             with src.open("rb") as fh:
                 form = aiohttp.FormData()
@@ -42,8 +45,8 @@ class ReplicateEngine:
             # 2) Bashorat (prediction) yaratish
             payload = {"input": {settings.REPLICATE_VIDEO_FIELD: file_obj["urls"]["get"],
                                  **settings.REPLICATE_EXTRA_INPUT}}
-            async with http.post(f"{API}/models/{settings.REPLICATE_MODEL}/predictions", json=payload) as resp:
-                prediction = await self._json(resp)
+            prediction = await self._create_prediction(http, payload)
+            logger.info("Replicate prediction %s yaratildi", prediction.get("id"))
 
             # 3) Tayyor bo'lishini kutish. Model aniq foiz bermaydi — taxminiy progress ko'rsatamiz.
             started = time.monotonic()
@@ -70,13 +73,31 @@ class ReplicateEngine:
                         f.write(chunk)
         await on_progress(0.85)
 
-        # 4) Rang va tiniqlik (AI allaqachon kattalashtirgan — o'lcham o'zgartirilmaydi)
-        vf = ",".join(finish_filters(preset, None, "bt709"))
+        # 4) Rang va tiniqlik. AI natijasi (masalan 4K) TARGET_HEIGHT'ga keltiriladi — aks holda
+        # 1 GB xotirali serverda kodlash xotirani to'ldirib yuboradi va Telegram limitiga ham sig'maydi.
+        remote_info = await probe(remote_result)
+        logger.info("Replicate natijasi: %dx%d", remote_info.width, remote_info.height)
+        vf = ",".join(finish_filters(preset, target_size(info), remote_info.color_matrix))
         await encode_within_limit(
             lambda enc: ["-i", str(remote_result), "-i", str(src), "-map", "0:v:0", "-map", "1:a:0?",
                          "-vf", vf, "-shortest", *enc],
             dst, info, lambda p: on_progress(0.85 + p * 0.15), deadline - time.monotonic(),
         )
+
+    async def _create_prediction(self, http: aiohttp.ClientSession, payload: dict) -> dict:
+        # "Rasmiy" modellar to'g'ridan-to'g'ri model nomi bilan chaqiriladi. Boshqalari uchun
+        # API 404 qaytaradi — unda modelning oxirgi versiyasini olib, versiya orqali chaqiramiz.
+        async with http.post(f"{API}/models/{settings.REPLICATE_MODEL}/predictions", json=payload) as resp:
+            if resp.status != 404:
+                return await self._json(resp)
+        async with http.get(f"{API}/models/{settings.REPLICATE_MODEL}") as resp:
+            model = await self._json(resp)
+        version = (model.get("latest_version") or {}).get("id")
+        if not version:
+            logger.error("Replicate modeli %s uchun versiya topilmadi", settings.REPLICATE_MODEL)
+            raise MediaError("AI modeli topilmadi.")
+        async with http.post(f"{API}/predictions", json={"version": version, **payload}) as resp:
+            return await self._json(resp)
 
     @staticmethod
     async def _json(resp: aiohttp.ClientResponse) -> dict:

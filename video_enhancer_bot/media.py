@@ -149,6 +149,7 @@ def encode_args(info: VideoInfo, bitrate_scale: float = 1.0) -> list[str]:
     video_kbps = max(video_kbps, 300)
     args = [
         "-c:v", "libx264", "-preset", settings.X264_PRESET, "-crf", "17",
+        "-threads", str(settings.FFMPEG_THREADS), "-x264-params", "rc-lookahead=20",
         "-maxrate", f"{video_kbps}k", "-bufsize", f"{video_kbps * 2}k",
         "-profile:v", "high", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
     ]
@@ -161,7 +162,8 @@ async def run_ffmpeg(
     args: list[str], duration: float, on_progress: ProgressCallback | None = None, timeout: float | None = None
 ) -> None:
     """ffmpeg'ni ishga tushiradi va `-progress` chiqishidan foizni hisoblab boradi."""
-    cmd = [settings.FFMPEG_BIN, "-hide_banner", "-y", "-nostats", "-progress", "pipe:1", *args]
+    cmd = [settings.FFMPEG_BIN, "-hide_banner", "-y", "-nostats", "-progress", "pipe:1",
+           "-filter_threads", str(settings.FFMPEG_THREADS), *args]
     logger.info("ffmpeg: %s", " ".join(cmd))
     proc = await asyncio.create_subprocess_exec(
         *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -188,6 +190,8 @@ async def run_ffmpeg(
         await proc.wait()
         raise
     if proc.returncode != 0:
+        if proc.returncode in (-9, 137):
+            logger.error("ffmpeg tizim tomonidan o'ldirildi — xotira yetmadi (FFMPEG_THREADS yoki TARGET_HEIGHT'ni kamaytiring)")
         logger.error("ffmpeg xatosi (%s):\n%s", proc.returncode, "".join(stderr_tail))
         raise MediaError("Videoni qayta ishlashda xatolik yuz berdi.")
 

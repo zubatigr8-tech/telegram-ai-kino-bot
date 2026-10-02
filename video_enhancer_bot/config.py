@@ -41,7 +41,10 @@ class Settings:
     FFMPEG_BIN: str = os.getenv("FFMPEG_BIN", "ffmpeg")
     FFPROBE_BIN: str = os.getenv("FFPROBE_BIN", "ffprobe")
     # libx264 preset: tezroq = ultrafast..medium, sifatliroq = slow/slower
-    X264_PRESET: str = os.getenv("X264_PRESET", "slow")
+    X264_PRESET: str = os.getenv("X264_PRESET", "medium")
+    # ffmpeg oqimlari soni. Konteyner serverning barcha yadrolarini "ko'radi" — cheklanmasa x264 o'nlab
+    # oqim ochib, 1 GB xotirali tarifda jarayon o'ldiriladi (OOM). 2 oqim ≈ 400 MB.
+    FFMPEG_THREADS: int = int(os.getenv("FFMPEG_THREADS", "2"))
 
     # --- Real-ESRGAN (lokal, GPU tavsiya etiladi) ---
     REALESRGAN_BIN: str = os.getenv("REALESRGAN_BIN", "realesrgan-ncnn-vulkan")

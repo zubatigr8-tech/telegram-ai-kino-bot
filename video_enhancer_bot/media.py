@@ -51,9 +51,9 @@ class Preset:
 
 
 PRESETS: dict[str, Preset] = {
-    "auto": Preset("auto", "✨ Avtomatik (tavsiya)", 1.22, 1.08, 0.02, 0.97, 0.15, 0.55, "3:2:4:3", 0.8),
-    "vivid": Preset("vivid", "🌈 Juda yorqin ranglar", 1.45, 1.14, 0.03, 0.95, 0.30, 0.65, "3:2:4:3", 1.0),
-    "natural": Preset("natural", "🎞 Tabiiy (faqat tiniqlik)", 1.05, 1.03, 0.0, 1.0, 0.0, 0.5, "2:1.5:3:2.5", 0.4),
+    "auto": Preset("auto", "✨ Avtomatik (tavsiya)", 1.35, 1.12, 0.02, 0.95, 0.25, 0.75, "3:2:4:3", 1.0),
+    "vivid": Preset("vivid", "🌈 Juda yorqin ranglar", 1.65, 1.18, 0.03, 0.93, 0.45, 0.85, "3:2:4:3", 1.0),
+    "natural": Preset("natural", "🎞 Tabiiy (faqat tiniqlik)", 1.08, 1.05, 0.0, 1.0, 0.05, 0.7, "2:1.5:3:2.5", 0.6),
 }
 
 
@@ -210,3 +210,24 @@ async def encode_within_limit(
             return
         logger.info("Natija %d bayt — limitdan katta, qayta kodlanadi", output.stat().st_size)
     raise MediaError("Natijaviy video Telegram limitiga sig'madi. Qisqaroq video yuboring.")
+
+
+async def comparison_image(src: Path, dst: Path, info: VideoInfo, out: Path) -> bool:
+    """Videoning o'rtasidagi bitta kadrdan "asl | yaxshilangan" solishtirma rasm yasaydi."""
+    at = f"{info.duration / 2:.2f}"
+    vertical = info.height > info.width
+    # Vertikal video — yonma-yon, gorizontal — ustma-ust (rasm telefonda kattaroq ko'rinadi)
+    size = "-2:1280" if vertical else "1280:-2"
+    stack = "hstack" if vertical else "vstack"
+    code, _, err = await _run([
+        settings.FFMPEG_BIN, "-hide_banner", "-y", "-ss", at, "-i", str(src), "-ss", at, "-i", str(dst),
+        "-filter_complex",
+        f"[0:v]scale={size}:flags=lanczos,setsar=1[a];[1:v]scale={size}:flags=lanczos,setsar=1[b];"
+        f"[a]pad=iw+12:ih:0:0:white[a2];[a2][b]{stack}=inputs=2" if vertical else
+        f"[0:v]scale={size}:flags=lanczos,setsar=1[a];[1:v]scale={size}:flags=lanczos,setsar=1[b];"
+        f"[a]pad=iw:ih+12:0:0:white[a2];[a2][b]{stack}=inputs=2",
+        "-frames:v", "1", "-q:v", "2", str(out),
+    ], timeout=120)
+    if code != 0:
+        logger.warning("Solishtirma rasm yasalmadi: %s", err[-500:])
+    return code == 0 and out.exists()

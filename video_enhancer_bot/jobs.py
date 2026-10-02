@@ -13,7 +13,7 @@ from aiogram.types import FSInputFile, ReplyParameters
 
 from video_enhancer_bot.config import settings
 from video_enhancer_bot.engines import Engine
-from video_enhancer_bot.media import PRESETS, MediaError, probe, target_size
+from video_enhancer_bot.media import PRESETS, MediaError, comparison_image, probe, target_size
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +119,17 @@ class JobQueue:
             took = int(time.monotonic() - started)
 
             await self._status(job, header + progress_bar(1) + "\n\n⬆️ Yuborilmoqda...")
+            compare = workdir / "compare.jpg"
+            if await comparison_image(src, dst, info, compare):
+                try:
+                    await self.bot.send_photo(
+                        job.chat_id, FSInputFile(compare),
+                        caption="👈 Asl video  |  Yaxshilangan 👉" if info.height > info.width
+                        else "👆 Asl video\n👇 Yaxshilangan",
+                        reply_parameters=ReplyParameters(message_id=job.reply_to_message_id, allow_sending_without_reply=True),
+                    )
+                except TelegramBadRequest:
+                    logger.warning("Solishtirma rasm yuborilmadi", exc_info=True)
             caption = f"✅ Tayyor! {info.width}×{info.height} → {w}×{h} · {preset.title}\n⏱ {took // 60} daq {took % 60} s"
             try:
                 await self.bot.send_video(

@@ -10,9 +10,9 @@ from sqlalchemy import select
 
 from bot.handlers.admin_panel import send_payment_to_admin
 from bot.handlers.movie import send_movie
+from bot.join_requests import handle_join_request
 from bot.keyboards import BTN_PREMIUM, BTN_SHORTS
 from bot.services import (
-    AUTO_APPROVE,
     CARD_NUMBER,
     CARD_OWNER,
     PREMIUM_PRICE,
@@ -24,7 +24,7 @@ from bot.services import (
 )
 from bot.states import UserFlow
 from shared.db.database import get_session
-from shared.db.models import Channel, JoinRequest, Payment, Short, User
+from shared.db.models import Payment, Short, User
 
 logger = logging.getLogger(__name__)
 router = Router(name="user")
@@ -167,32 +167,17 @@ async def premium_receipt_wrong(message: Message) -> None:
 
 @router.chat_join_request()
 async def join_request(request: ChatJoinRequest) -> None:
-    """Bot admin bo'lgan kanalga kelgan qo'shilish so'rovini tasdiqlaydi va so'rov egasiga xabar yuboradi."""
-    async with get_session() as session:
-        is_our_channel = (
-            await session.execute(select(Channel.id).where(Channel.chat_id == request.chat.id))
-        ).first() is not None
-    auto = (await get_setting(AUTO_APPROVE, "1")) == "1"
-    approved = False
-    if auto and is_our_channel:
-        try:
-            await request.approve()
-            approved = True
-        except Exception as exc:
-            logger.warning("Zayavkani tasdiqlab bo'lmadi (chat=%s): %s", request.chat.id, exc)
-
-    async with get_session() as session:
-        session.add(JoinRequest(user_id=request.from_user.id, chat_id=request.chat.id, approved=approved))
-        await session.commit()
-
+    """Majburiy kanalga kelgan qo'shilish so'rovi: avto-rejimda darhol tasdiqlanadi, yig'ish rejimida
+    saqlanadi (foydalanuvchi obuna bo'lgan hisoblanadi) va so'rov egasiga xabar yuboriladi."""
+    is_our_channel, approved = await handle_join_request(request)
     if not is_our_channel:
         return
     me = await request.bot.me()
     text = (
         f"✅ <b>{h(request.chat.title or 'Kanal')}</b> kanaliga qo'shilish so'rovingiz qabul qilindi!\n\n"
         if approved
-        else f"📨 <b>{h(request.chat.title or 'Kanal')}</b> kanaliga so'rovingiz yuborildi.\n\n"
-    ) + "🎬 Kinolarni olish uchun botni ishga tushiring va kino kodini yuboring."
+        else f"📨 <b>{h(request.chat.title or 'Kanal')}</b> kanaliga so'rovingiz qabul qilindi.\n\n"
+    ) + "🎬 Kinolarni olish uchun botni oching va kino kodini yuboring."
     kb = InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text="🎬 Botni ochish", url=f"https://t.me/{me.username}?start=join")]]
     )

@@ -21,6 +21,7 @@ class AdminFlow(StatesGroup):
     premium_price = State()
     manage_user_id = State()
     approve_days = State()
+    channel_owner_id = State()
 
 
 class UserFlow(StatesGroup):

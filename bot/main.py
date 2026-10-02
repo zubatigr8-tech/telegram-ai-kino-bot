@@ -9,7 +9,7 @@ from aiogram.types import ErrorEvent
 
 from bot.backup_worker import run_backup_worker
 from bot.broadcast_worker import run_broadcast_worker
-from bot.handlers import admin_panel, admin_tools, movie, start, user
+from bot.handlers import admin_panel, admin_tools, channel_owner, movie, start, user
 from bot.middlewares import SubscriptionMiddleware, UserMiddleware
 from shared.config import settings
 from bot.services import load_admins
@@ -48,6 +48,7 @@ async def main() -> None:
     dp.include_router(admin_panel.router)
     dp.include_router(admin_tools.router)
     dp.include_router(start.router)
+    dp.include_router(channel_owner.router)  # kanal admini: /kanal, "Hammasini tasdiqlash"
     dp.include_router(user.router)  # Shorts, Premium, kanal zayavkalari
     dp.include_router(movie.router)  # oxirgi bo'lishi kerak: unda qolgan barcha xabarlar uchun yo'riqnoma bor
 

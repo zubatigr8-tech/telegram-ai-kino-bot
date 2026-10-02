@@ -49,6 +49,13 @@ class Channel(Base):
     # Yopiq (username'siz) kanallar uchun taklif havolasi — bot uni o'zi yaratadi
     invite_link: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Kanal admini (egasi) — o'z kanali statistikasini ko'radi va zayavkalarni tasdiqlaydi
+    owner_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # Zayavka yig'ish rejimi: so'rovlar darhol tasdiqlanmaydi, kanal admini keyin hammasini birdan tasdiqlaydi.
+    # So'rov yuborgan foydalanuvchi esa darhol obuna bo'lgan hisoblanadi.
+    collect_requests: Mapped[bool] = mapped_column(Boolean, default=False)
+    request_link: Mapped[str | None] = mapped_column(String(255), nullable=True)  # zayavka talab qiladigan havola
+    last_milestone: Mapped[int] = mapped_column(Integer, default=0)  # oxirgi bildirilgan bosqich (1000, 5000...)
 
 
 class BroadcastJob(Base):
@@ -117,4 +124,5 @@ class JoinRequest(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, index=True)
     chat_id: Mapped[int] = mapped_column(BigInteger, index=True)
     approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    failed: Mapped[bool] = mapped_column(Boolean, default=False)  # tasdiqlab bo'lmadi (so'rov bekor qilingan va h.k.)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

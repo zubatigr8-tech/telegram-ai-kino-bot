@@ -12,7 +12,7 @@ from aiogram.types import User as TgUser
 from sqlalchemy.exc import IntegrityError
 
 from bot.channels import ensure_channel_links, get_active_channels, is_subscribed
-from bot.keyboards import BTN_PREMIUM, subscription_keyboard
+from bot.keyboards import BTN_MY_CHANNEL, BTN_PREMIUM, subscription_keyboard
 from bot.states import UserFlow
 from bot.services import all_admin_ids, is_admin as check_admin, premium_enabled, user_is_premium
 from shared.db.database import get_session
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 EXEMPT_CALLBACKS = {"check_subscription"}
 # Premium sotib olish obunasiz ham ishlashi kerak (premium aynan obunadan ozod qiladi)
-EXEMPT_CALLBACK_PREFIXES = ("prem:",)
+EXEMPT_CALLBACK_PREFIXES = ("prem:", "jr:")
 PENDING_CODE_KEY = "pending_code"
 LAST_ACTIVE_UPDATE_INTERVAL = datetime.timedelta(minutes=5)
 
@@ -154,7 +154,9 @@ class SubscriptionMiddleware(BaseMiddleware):
             event.data in EXEMPT_CALLBACKS or (event.data or "").startswith(EXEMPT_CALLBACK_PREFIXES)
         ):
             return await handler(event, data)
-        if isinstance(event, Message) and event.text == BTN_PREMIUM:
+        if isinstance(event, Message) and (
+            event.text in (BTN_PREMIUM, BTN_MY_CHANNEL) or (event.text or "").startswith("/kanal")
+        ):
             return await handler(event, data)
         state = data.get("state")
         if state is not None and await state.get_state() == UserFlow.send_receipt.state:

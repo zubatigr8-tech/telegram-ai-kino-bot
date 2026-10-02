@@ -5,6 +5,7 @@ from aiogram.types import CallbackQuery, Message
 
 from bot.channels import ensure_channel_links, get_active_channels, is_subscribed
 from bot.handlers.movie import send_movie
+from bot.join_requests import owned_channels
 from bot.keyboards import subscription_keyboard, user_menu_kb
 from bot.services import premium_enabled
 
@@ -15,6 +16,10 @@ WELCOME_TEXT = (
     "🎬 Kinoni olish uchun kino kodini (raqamini) yuboring, masalan: <b>7</b>"
 )
 PENDING_CODE_KEY = "pending_code"
+
+
+async def menu_kb(user_id: int, is_admin: bool):
+    return user_menu_kb(is_admin, await premium_enabled(), is_owner=bool(await owned_channels(user_id)))
 
 
 def start_code(command: CommandObject | None) -> int | None:
@@ -28,7 +33,7 @@ async def cmd_start(message: Message, state: FSMContext, command: CommandObject,
     # /start'ga faqat kanal(lar)ga obuna bo'lgan (yoki premium) foydalanuvchi yetib keladi —
     # obuna bo'lmaganlarga SubscriptionMiddleware kanallar ro'yxatini ko'rsatadi.
     await state.clear()
-    kb = user_menu_kb(is_admin, await premium_enabled())
+    kb = await menu_kb(message.from_user.id, is_admin)
     code = start_code(command)
     if code is not None and await send_movie(message.bot, message.chat.id, code):
         await message.answer("🎬 Boshqa kino uchun kodini yuboring.", reply_markup=kb)
@@ -61,7 +66,7 @@ async def check_subscription_callback(callback: CallbackQuery, state: FSMContext
             await callback.message.delete()
         except Exception:
             pass
-    kb = user_menu_kb(is_admin, await premium_enabled())
+    kb = await menu_kb(callback.from_user.id, is_admin)
     if code is not None and await send_movie(callback.bot, callback.from_user.id, code):
         await callback.bot.send_message(
             callback.from_user.id, "✅ Obuna tasdiqlandi!\n\n🎬 Boshqa kino uchun kodini yuboring.", reply_markup=kb

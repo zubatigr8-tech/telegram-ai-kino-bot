@@ -21,6 +21,11 @@ _ADDED_COLUMNS = [
     ("broadcast_jobs", "copy_from_chat_id", "BIGINT"),
     ("broadcast_jobs", "copy_message_id", "INTEGER"),
     ("broadcast_jobs", "to_channels", "BOOLEAN NOT NULL DEFAULT 0"),
+    ("channels", "owner_id", "BIGINT"),
+    ("channels", "collect_requests", "BOOLEAN NOT NULL DEFAULT 0"),
+    ("channels", "request_link", "VARCHAR(255)"),
+    ("channels", "last_milestone", "INTEGER NOT NULL DEFAULT 0"),
+    ("join_requests", "failed", "BOOLEAN NOT NULL DEFAULT 0"),
 ]
 
 

@@ -106,8 +106,14 @@ admin panelni ochadi:
 `.env`dagi `ADMIN_IDS` — asosiy adminlar; faqat ular boshqa adminlarni qo'sha/o'chira oladi.
 Bot orqali qo'shilgan adminlar bazada saqlanadi.
 
-**Kanal zayavkalari:** bot admin bo'lgan majburiy kanalga "qo'shilish so'rovi" kelsa, bot uni
-avtomatik tasdiqlaydi (sozlamadan o'chirish mumkin) va so'rov egasiga botni ochish tugmasi bilan xabar yuboradi.
+**Kanal zayavkalari** (📣 Kanallarni sozlash → kanalni tanlash):
+- **⚡ Avto-tasdiqlash** — bot qo'shilish so'rovini darhol tasdiqlaydi.
+- **📥 Zayavka yig'ish** — bot zayavka talab qiladigan maxsus havola yaratadi. So'rov yuborgan foydalanuvchi
+  darhol obuna bo'lgan hisoblanadi va kino oladi, so'rov esa tasdiqlanmay turadi. Zayavkalar soni
+  1000, 5000, 10000 (keyin har 10000) ga yetganda kanal admini va bot adminlariga xabar boradi;
+  **✅ Hammasini tasdiqlash** tugmasi barcha kutilayotgan so'rovlarni birdan tasdiqlaydi.
+- **👤 Kanal admini** — kanal egasining Telegram ID si. U botda **📊 Kanalim** (yoki `/kanal`) orqali
+  kanaldagi obunachilar, bot orqali kelgan zayavkalar sonini ko'radi va zayavkalarni tasdiqlaydi.
 
 ## 6. Kino qo'shish tartibi
 

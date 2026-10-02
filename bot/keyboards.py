@@ -9,6 +9,7 @@ BTN_CHECK_SUB = "✅ Tekshirish"
 BTN_SHORTS = "🎬 Shorts"
 BTN_PREMIUM = "💎 Premium"
 BTN_ADMIN_PANEL = "📋 Boshqarish"
+BTN_MY_CHANNEL = "📊 Kanalim"  # kanal admini (egasi) uchun
 
 # ---------- Admin panel (pastki tugmalar) ----------
 BTN_CHANNELS = "📣 Kanallarni sozlash"
@@ -52,13 +53,18 @@ def admin_menu_kb() -> ReplyKeyboardMarkup:
     return _reply_kb(ADMIN_BUTTONS)
 
 
-def user_menu_kb(is_admin: bool, premium_enabled: bool) -> ReplyKeyboardMarkup:
+def user_menu_kb(is_admin: bool, premium_enabled: bool, is_owner: bool = False) -> ReplyKeyboardMarkup:
     row = [BTN_SHORTS]
     if premium_enabled:
         row.append(BTN_PREMIUM)
     rows = [row]
+    extra = []
+    if is_owner:
+        extra.append(BTN_MY_CHANNEL)
     if is_admin:
-        rows.append([BTN_ADMIN_PANEL])
+        extra.append(BTN_ADMIN_PANEL)
+    if extra:
+        rows.append(extra)
     return _reply_kb(rows)
 
 

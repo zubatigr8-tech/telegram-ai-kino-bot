@@ -7,6 +7,7 @@ from html import escape as h
 from aiogram import Bot
 from sqlalchemy import select
 
+from bot.join_requests import create_request_link, has_pending_request
 from bot.services import all_admin_ids
 
 from shared.db.database import get_session
@@ -34,6 +35,10 @@ def clean_username(raw: str | None) -> str | None:
 
 
 def channel_url(channel: Channel) -> str | None:
+    # Zayavka yig'ish rejimida ochiq kanal havolasi ham to'g'ridan-to'g'ri qo'shib yuboradi —
+    # shuning uchun zayavka talab qiladigan maxsus havola beriladi
+    if getattr(channel, "collect_requests", False) and channel.request_link:
+        return channel.request_link
     username = clean_username(channel.username)
     if username:
         return f"https://t.me/{username}"
@@ -94,6 +99,19 @@ async def ensure_channel_links(bot: Bot, channels: list[Channel]) -> None:
     """Havolasi yo'q yoki noto'g'ri kanallar uchun ma'lumotni Telegram'dan olib, bazaga yozadi.
     Masalan, username o'rniga kanal nomi yozib qo'yilgan eski yozuvlar shu yerda o'zi tuzaladi."""
     for ch in channels:
+        if ch.collect_requests and not ch.request_link:
+            # Zayavka yig'ish rejimi yoqilgan, lekin zayavka havolasi hali yaratilmagan
+            try:
+                link = await create_request_link(bot, ch)
+            except Exception as exc:
+                logger.warning("Zayavka havolasini yaratib bo'lmadi (chat_id=%s): %s", ch.chat_id, exc)
+            else:
+                async with get_session() as session:
+                    db_ch = await session.get(Channel, ch.id)
+                    if db_ch is not None:
+                        db_ch.request_link = link
+                        await session.commit()
+                ch.request_link = link
         if channel_url(ch):
             continue
         try:
@@ -147,6 +165,10 @@ async def is_subscribed(bot: Bot, user_id: int, channels: list[Channel]) -> bool
             continue
         # "restricted" — cheklangan, lekin kanal a'zosi bo'lib qolishi mumkin
         if member.status == "restricted" and getattr(member, "is_member", False):
+            continue
+        # Zayavka yig'ish rejimida so'rov yuborgan foydalanuvchi obuna bo'lgan hisoblanadi
+        # (so'rovni kanal admini keyinroq hammasi bilan birga tasdiqlaydi)
+        if ch.collect_requests and await has_pending_request(user_id, ch.chat_id):
             continue
         return False
     return True

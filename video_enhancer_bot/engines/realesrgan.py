@@ -32,7 +32,8 @@ class RealEsrganEngine:
 
         # 1-bosqich (0–10%): kadrlarga ajratish. -r bilan doimiy FPS — kadrlar soni aniq bo'ladi.
         await run_ffmpeg(
-            ["-i", str(src), "-map", "0:v:0", "-vf", ",".join(cleanup_filters(preset)),
+            ["-i", str(src), "-map", "0:v:0",
+             "-vf", ",".join(cleanup_filters(preset) + [f"scale=in_color_matrix={info.color_matrix}", "format=rgb24"]),
              "-r", info.fps, str(frames_dir / "%08d.png")],
             info.duration, lambda p: on_progress(p * 0.10), deadline - time.monotonic(),
         )

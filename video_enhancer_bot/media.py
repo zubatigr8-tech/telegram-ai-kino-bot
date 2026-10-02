@@ -28,6 +28,8 @@ class VideoInfo:
     duration: float
     fps: str  # ffmpeg'ga to'g'ridan-to'g'ri beriladigan kasr, masalan "30000/1001"
     has_audio: bool
+    # Asl videoning rang matritsasi (scale filtri uchun): "bt709" yoki "bt601"
+    color_matrix: str = "bt709"
 
     @property
     def fps_float(self) -> float:
@@ -46,14 +48,13 @@ class Preset:
     vibrance: float
     sharpen: float  # cas filtri kuchi, 0..1
     denoise: str  # hqdn3d parametrlari
-    # Avtomatik rang tiklash kuchi (0..1): xiralikni cho'zib, eski plyonkaning sarg'ish/ko'kish tusini olib tashlaydi
-    restore: float
 
 
 PRESETS: dict[str, Preset] = {
-    "auto": Preset("auto", "✨ Avtomatik (tavsiya)", 1.35, 1.12, 0.02, 0.95, 0.25, 0.75, "3:2:4:3", 1.0),
-    "vivid": Preset("vivid", "🌈 Juda yorqin ranglar", 1.65, 1.18, 0.03, 0.93, 0.45, 0.85, "3:2:4:3", 1.0),
-    "natural": Preset("natural", "🎞 Tabiiy (faqat tiniqlik)", 1.08, 1.05, 0.0, 1.0, 0.05, 0.7, "2:1.5:3:2.5", 0.6),
+    # gamma > 1 — o'rta tonlarni yoritadi (gamma < 1 videoni qoraytirib yuborardi)
+    "auto": Preset("auto", "✨ Avtomatik (tavsiya)", 1.35, 1.06, 0.03, 1.06, 0.30, 0.75, "3:2:4:3"),
+    "vivid": Preset("vivid", "🌈 Juda yorqin ranglar", 1.70, 1.10, 0.04, 1.08, 0.50, 0.85, "3:2:4:3"),
+    "natural": Preset("natural", "🎞 Tabiiy (faqat tiniqlik)", 1.10, 1.04, 0.01, 1.03, 0.10, 0.70, "2:1.5:3:2.5"),
 }
 
 
@@ -99,7 +100,15 @@ async def probe(path: Path) -> VideoInfo:
             rotation = abs(int(side["rotation"]))
     if rotation in {90, 270}:
         width, height = height, width
-    return VideoInfo(width, height, duration, fps, has_audio)
+    # Rang matritsasi belgilanmagan bo'lsa, pleyerlar kabi taxmin qilamiz: HD → bt709, SD → bt601
+    space = video.get("color_space") or ""
+    if space == "bt709":
+        matrix = "bt709"
+    elif space in {"smpte170m", "bt470bg", "bt601"}:
+        matrix = "bt601"
+    else:
+        matrix = "bt709" if min(width, height) >= 720 else "bt601"
+    return VideoInfo(width, height, duration, fps, has_audio, matrix)
 
 
 def target_size(info: VideoInfo) -> tuple[int, int]:
@@ -122,15 +131,13 @@ def cleanup_filters(preset: Preset) -> list[str]:
     ]
 
 
-def finish_filters(preset: Preset, size: tuple[int, int] | None) -> list[str]:
-    """Kattalashtirish (kerak bo'lsa), rang, kontrast va tiniqlik."""
-    filters = []
-    if preset.restore:
-        # Har bir rang kanalini alohida qora/oq nuqtaga cho'zadi (independence) — rang og'ishini tuzatadi.
-        # smoothing: bir necha soniya bo'yi o'rtachalanadi, shunda yorug'lik kadrdan-kadrga "miltillamaydi".
-        filters.append(f"normalize=smoothing=50:independence=0.8:strength={preset.restore}")
-    if size:
-        filters.append(f"scale={size[0]}:{size[1]}:flags=lanczos")
+def finish_filters(preset: Preset, size: tuple[int, int] | None, in_matrix: str = "bt709") -> list[str]:
+    """Kattalashtirish (kerak bo'lsa), rang, kontrast va tiniqlik.
+
+    Natija har doim BT.709 ga o'tkaziladi va shunday belgilanadi — aks holda pleyerlar ranglarni
+    noto'g'ri (sarg'ish/qizg'ish) ko'rsatadi."""
+    dims = f"{size[0]}:{size[1]}:flags=lanczos:" if size else ""
+    filters = [f"scale={dims}in_color_matrix={in_matrix}:out_color_matrix=bt709"]
     filters += [
         "deband=1thr=0.015:2thr=0.015:3thr=0.015:range=16",  # eski siqilgan videodagi "zinapoya" gradientlar
         f"eq=contrast={preset.contrast}:brightness={preset.brightness}"
@@ -152,6 +159,7 @@ def encode_args(info: VideoInfo, bitrate_scale: float = 1.0) -> list[str]:
         "-threads", str(settings.FFMPEG_THREADS), "-x264-params", "rc-lookahead=20",
         "-maxrate", f"{video_kbps}k", "-bufsize", f"{video_kbps * 2}k",
         "-profile:v", "high", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+        "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
     ]
     if info.has_audio:
         args += ["-c:a", "aac", "-b:a", f"{AUDIO_BITRATE_KBPS}k"]

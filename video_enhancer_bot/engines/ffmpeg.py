@@ -13,7 +13,7 @@ class FfmpegEngine:
         self, src: Path, dst: Path, info: VideoInfo, preset: Preset, workdir: Path,
         on_progress: ProgressCallback, timeout: float,
     ) -> None:
-        vf = ",".join(cleanup_filters(preset) + finish_filters(preset, target_size(info)))
+        vf = ",".join(cleanup_filters(preset) + finish_filters(preset, target_size(info), info.color_matrix))
         await encode_within_limit(
             lambda enc: ["-i", str(src), "-map", "0:v:0", "-map", "0:a:0?", "-vf", vf, *enc],
             dst, info, on_progress, timeout,

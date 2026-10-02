@@ -71,7 +71,7 @@ class ReplicateEngine:
         await on_progress(0.85)
 
         # 4) Rang va tiniqlik (AI allaqachon kattalashtirgan — o'lcham o'zgartirilmaydi)
-        vf = ",".join(finish_filters(preset, None))
+        vf = ",".join(finish_filters(preset, None, "bt709"))
         await encode_within_limit(
             lambda enc: ["-i", str(remote_result), "-i", str(src), "-map", "0:v:0", "-map", "1:a:0?",
                          "-vf", vf, "-shortest", *enc],

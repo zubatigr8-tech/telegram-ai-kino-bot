@@ -167,17 +167,15 @@ async def premium_receipt_wrong(message: Message) -> None:
 
 @router.chat_join_request()
 async def join_request(request: ChatJoinRequest) -> None:
-    """Majburiy kanalga kelgan qo'shilish so'rovi: avto-rejimda darhol tasdiqlanadi, yig'ish rejimida
-    saqlanadi (foydalanuvchi obuna bo'lgan hisoblanadi) va so'rov egasiga xabar yuboriladi."""
-    is_our_channel, approved = await handle_join_request(request)
-    if not is_our_channel:
+    """Majburiy kanalga kelgan qo'shilish so'rovi faqat ro'yxatga olinadi (bot uni TASDIQLAMAYDI —
+    buni kanal admini o'zi qiladi). Foydalanuvchi obuna bo'lgan hisoblanadi va unga xabar yuboriladi."""
+    if not await handle_join_request(request):
         return
     me = await request.bot.me()
     text = (
-        f"✅ <b>{h(request.chat.title or 'Kanal')}</b> kanaliga qo'shilish so'rovingiz qabul qilindi!\n\n"
-        if approved
-        else f"📨 <b>{h(request.chat.title or 'Kanal')}</b> kanaliga so'rovingiz qabul qilindi.\n\n"
-    ) + "🎬 Kinolarni olish uchun botni oching va kino kodini yuboring."
+        f"📨 <b>{h(request.chat.title or 'Kanal')}</b> kanaliga so'rovingiz qabul qilindi.\n\n"
+        "🎬 Kinolarni olish uchun botni oching va kino kodini yuboring."
+    )
     kb = InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text="🎬 Botni ochish", url=f"https://t.me/{me.username}?start=join")]]
     )

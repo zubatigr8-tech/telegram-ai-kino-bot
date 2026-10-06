@@ -1,5 +1,8 @@
 """Kanal zayavkalari (qo'shilish so'rovlari): yig'ish, statistika, bosqich bildirishnomalari
-va hammasini bitta buyruq bilan tasdiqlash."""
+va hammasini bitta buyruq bilan tasdiqlash.
+
+MUHIM: bot zayavkalarni HECH QACHON o'zi tasdiqlamaydi. Zayavkalar faqat yig'iladi; ularni kanal
+admini Telegram'ning o'zida yoki botdagi "Hammasini tasdiqlash" tugmasini bosib tasdiqlaydi."""
 import asyncio
 import logging
 from html import escape as h
@@ -9,7 +12,7 @@ from aiogram.exceptions import TelegramRetryAfter
 from aiogram.types import ChatJoinRequest, InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy import func, select, update
 
-from bot.services import AUTO_APPROVE, all_admin_ids, get_setting, is_admin
+from bot.services import all_admin_ids, is_admin
 from shared.db.database import get_session
 from shared.db.models import Channel, JoinRequest
 
@@ -77,10 +80,8 @@ async def channel_stats_text(bot: Bot, channel: Channel) -> str:
         f"📨 Bot orqali kelgan zayavkalar: <b>{total}</b>",
         f"⏳ Tasdiq kutayotganlar: <b>{pending}</b>",
         f"✅ Tasdiqlanganlar: <b>{approved}</b>",
-        f"⚙️ Rejim: {'zayavkalar yig‘iladi' if channel.collect_requests else 'avtomatik tasdiqlash'}",
+        f"🎯 Keyingi bildirishnoma: <b>{next_milestone(channel.last_milestone or 0)}</b> zayavkada",
     ]
-    if channel.collect_requests:
-        lines.append(f"🎯 Keyingi bildirishnoma: <b>{next_milestone(channel.last_milestone or 0)}</b> zayavkada")
     if channel.chat_id in _running:
         lines.append("\n🔄 <i>Hozir tasdiqlanmoqda...</i>")
     return "\n".join(lines)
@@ -131,28 +132,31 @@ async def _check_milestone(bot: Bot, channel: Channel) -> None:
     )
 
 
-async def handle_join_request(request: ChatJoinRequest) -> tuple[bool, bool]:
-    """Zayavkani qayta ishlaydi. (bizning kanalmi, darhol tasdiqlandimi) qaytaradi."""
+async def handle_join_request(request: ChatJoinRequest) -> bool:
+    """Zayavkani faqat ro'yxatga oladi (TASDIQLAMAYDI). Bizning majburiy kanalimiz bo'lsa True qaytaradi."""
     channel = await get_channel_by_chat(request.chat.id)
     if channel is None:
-        return False, False
+        return False
 
-    approved = False
-    if not channel.collect_requests and (await get_setting(AUTO_APPROVE, "1")) == "1":
-        try:
-            await request.approve()
-            approved = True
-        except Exception as exc:
-            logger.warning("Zayavkani tasdiqlab bo'lmadi (chat=%s): %s", request.chat.id, exc)
-
-    if approved or not await has_pending_request(request.from_user.id, request.chat.id):
+    if not await has_pending_request(request.from_user.id, request.chat.id):
         async with get_session() as session:
-            session.add(JoinRequest(user_id=request.from_user.id, chat_id=request.chat.id, approved=approved))
+            session.add(JoinRequest(user_id=request.from_user.id, chat_id=request.chat.id, approved=False))
             await session.commit()
 
-    if channel.collect_requests:
-        await _check_milestone(request.bot, channel)
-    return True, approved
+    await _check_milestone(request.bot, channel)
+    return True
+
+
+async def mark_joined(user_id: int, chat_id: int) -> None:
+    """Kanal admini zayavkani Telegram'ning o'zida tasdiqlagan bo'lsa, bizdagi yozuv ham "tasdiqlangan" bo'ladi."""
+    async with get_session() as session:
+        await session.execute(
+            update(JoinRequest)
+            .where(JoinRequest.user_id == user_id, JoinRequest.chat_id == chat_id)
+            .where(JoinRequest.approved == False, JoinRequest.failed == False)  # noqa: E712
+            .values(approved=True)
+        )
+        await session.commit()
 
 
 async def _approve_all(bot: Bot, channel: Channel, report_chat_id: int) -> None:

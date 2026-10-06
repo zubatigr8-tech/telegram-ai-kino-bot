@@ -91,7 +91,7 @@ admin panelni ochadi:
 
 | Tugma | Vazifasi |
 |---|---|
-| 📣 Kanallarni sozlash | Majburiy kanallar: qo'shish (post forward / ID / @username), yoqish/o'chirish, zayavkalarni avto-tasdiqlash |
+| 📣 Kanallarni sozlash | Majburiy kanallar: qo'shish (post forward / ID / @username), yoqish/o'chirish, kanal admini, zayavkalar soni va ularni tasdiqlash |
 | 📈 Statistika | Foydalanuvchilar, faollik, premium, kinolar, ko'rishlar, eng ko'p ko'rilgan kinolar |
 | ✉️ Xabar yuborish | Istalgan xabar (matn/rasm/video) nusxasi barcha foydalanuvchilarga, xohlasangiz kanallarga ham |
 | 🤖 Bot holati | Ishlash vaqti, navbatdagi xabarlar, to'lovlar, har bir kanalda bot admin ekanligi |
@@ -107,8 +107,8 @@ admin panelni ochadi:
 Bot orqali qo'shilgan adminlar bazada saqlanadi.
 
 **Kanal zayavkalari** (📣 Kanallarni sozlash → kanalni tanlash):
-- **⚡ Avto-tasdiqlash** — bot qo'shilish so'rovini darhol tasdiqlaydi.
-- **📥 Zayavka yig'ish** — bot zayavka talab qiladigan maxsus havola yaratadi. So'rov yuborgan foydalanuvchi
+- Bot zayavkalarni **hech qachon o'zi tasdiqlamaydi** — ular faqat yig'iladi.
+- Bot zayavka talab qiladigan maxsus havola yaratadi (🔗 Zayavka havolasi). So'rov yuborgan foydalanuvchi
   darhol obuna bo'lgan hisoblanadi va kino oladi, so'rov esa tasdiqlanmay turadi. Zayavkalar soni
   1000, 5000, 10000 (keyin har 10000) ga yetganda kanal admini va bot adminlariga xabar boradi;
   **✅ Hammasini tasdiqlash** tugmasi barcha kutilayotgan so'rovlarni birdan tasdiqlaydi.

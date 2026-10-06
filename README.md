@@ -187,4 +187,5 @@ tushirish" tugmasi bor.
 
 - `/admin` — bot ichidagi admin panel
 - `/server` — bot qayerda ishlayotganini ko'rsatadi (☁️ Railway yoki 🖥️ kompyuter)
+- `/cookies` — cookies holati; cookies faylini (`.txt`/`.json`) botga **fayl qilib** yuborsangiz, bot uni saqlaydi
 - `/myid` — Telegram ID'ingiz (hamma uchun; `ADMIN_IDS` ga shu raqam yoziladi)

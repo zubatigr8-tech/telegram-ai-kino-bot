@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -138,32 +139,85 @@ def _netscape_lines(raw: str) -> list[str]:
     return lines
 
 
+def parse_cookie_text(raw: str) -> list[str]:
+    """Cookies matnini (Netscape yoki brauzer kengaytmasining JSON eksporti) Netscape qatorlariga o'giradi."""
+    raw = raw.strip().lstrip("\ufeff").strip().strip('"').strip()
+    return _json_cookies_to_lines(raw) if raw.startswith(("[", "{")) else _netscape_lines(raw)
+
+
+def cookie_domains(lines: list[str]) -> list[str]:
+    return sorted({line.split("\t")[0].replace("#HttpOnly_", "").lstrip(".") for line in lines})
+
+
+def _cookie_sources() -> list[tuple[str, list[str]]]:
+    """Barcha cookies manbalari: COOKIES_FILE, COOKIES_TEXT* o'zgaruvchilari, botga yuborilgan fayllar."""
+    sources = []
+    if settings.COOKIES_FILE and os.path.exists(settings.COOKIES_FILE):
+        sources.append((settings.COOKIES_FILE, parse_cookie_text(Path(settings.COOKIES_FILE).read_text("utf-8", "ignore"))))
+    for name, value in sorted(os.environ.items()):
+        if name.startswith("COOKIES_TEXT") and value.strip():
+            sources.append((name, parse_cookie_text(value)))
+    cookies_dir = Path(settings.COOKIES_DIR)
+    if cookies_dir.is_dir():
+        for f in sorted(cookies_dir.glob("*.txt")):
+            sources.append((f"bot: {f.name}", parse_cookie_text(f.read_text("utf-8", "ignore"))))
+    return sources
+
+
+def cookie_status() -> list[tuple[str, int, list[str]]]:
+    return [(name, len(lines), cookie_domains(lines)) for name, lines in _cookie_sources()]
+
+
+def save_uploaded_cookies(raw: str) -> tuple[int, list[str]]:
+    """Admin botga yuborgan cookies faylini saqlaydi: (cookie soni, saytlar)."""
+    lines = parse_cookie_text(raw)
+    if not lines:
+        return 0, []
+    domains = cookie_domains(lines)
+    main = next((d for d in domains if any(k in d for k in ("instagram", "youtube", "tiktok"))), domains[0])
+    cookies_dir = Path(settings.COOKIES_DIR)
+    cookies_dir.mkdir(parents=True, exist_ok=True)
+    target = cookies_dir / f"{re.sub(r'[^a-z0-9.]+', '_', main.lower())}.txt"
+    target.write_text("# Netscape HTTP Cookie File\n" + "\n".join(lines) + "\n", encoding="utf-8")
+    reset_cookie_cache()
+    return len(lines), domains
+
+
+def clear_uploaded_cookies() -> int:
+    cookies_dir = Path(settings.COOKIES_DIR)
+    removed = 0
+    if cookies_dir.is_dir():
+        for f in cookies_dir.glob("*.txt"):
+            f.unlink(missing_ok=True)
+            removed += 1
+    reset_cookie_cache()
+    return removed
+
+
+def reset_cookie_cache() -> None:
+    global _env_cookie_path, _env_cookie_checked
+    _env_cookie_path = None
+    _env_cookie_checked = False
+
+
 def _cookie_file() -> str | None:
-    """COOKIES_FILE (fayl) yoki COOKIES_TEXT* (hostingdagi o'zgaruvchilar) dan cookies fayli yo'li.
+    """Barcha manbalardagi cookies'ni bitta Netscape fayliga yig'adi va yo'lini qaytaradi.
 
     Har qanday formatdagi xato cookies botni to'xtatmasligi kerak: JSON o'giriladi, buzuq qatorlar
     tashlanadi, fayl baribir o'qilmasa — yuklash cookies'siz davom etadi."""
     global _env_cookie_path, _env_cookie_checked
-    if settings.COOKIES_FILE and os.path.exists(settings.COOKIES_FILE):
-        return settings.COOKIES_FILE
     if _env_cookie_checked:
         return _env_cookie_path
     _env_cookie_checked = True
 
-    # COOKIES_TEXT, COOKIES_TEXT_INSTAGRAM, COOKIES_TEXT_YOUTUBE ... — hammasi bitta faylga qo'shiladi
     lines = []
-    for name, value in sorted(os.environ.items()):
-        if not name.startswith("COOKIES_TEXT") or not value.strip():
-            continue
-        raw = value.strip().strip('"').strip()
-        found = _json_cookies_to_lines(raw) if raw.startswith(("[", "{")) else _netscape_lines(raw)
-        domains = sorted({line.split("\t")[0].replace("#HttpOnly_", "").lstrip(".") for line in found})
-        logger.info("%s: %d ta cookie (%s)", name, len(found), ", ".join(domains[:6]) or "—")
+    for name, found in _cookie_sources():
+        logger.info("%s: %d ta cookie (%s)", name, len(found), ", ".join(cookie_domains(found)[:6]) or "—")
         lines.extend(found)
     if not lines:
         return None
 
-    path = Path(settings.DOWNLOAD_DIR) / "cookies_from_env.txt"
+    path = Path(settings.DOWNLOAD_DIR) / "cookies_combined.txt"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("# Netscape HTTP Cookie File\n" + "\n".join(lines) + "\n", encoding="utf-8")
     try:
@@ -382,14 +436,20 @@ async def download_song(url: str, fallback_query: str, outdir: Path) -> AudioRes
         return await asyncio.to_thread(_download_audio_sync, url, outdir)
     except (DownloadError, MediaError) as exc:
         logger.warning("Audio yuklanmadi (%s): %s", url, exc)
-    if "soundcloud.com" in url:
-        return None
     try:
-        found = await asyncio.to_thread(_search_sync, "scsearch", fallback_query, 3)
-        if found:
-            return await asyncio.to_thread(_download_audio_sync, found[0].url, outdir)
+        found = await asyncio.to_thread(_search_sync, "scsearch", fallback_query, 6)
     except Exception as exc:
-        logger.warning("SoundCloud'dan ham yuklab bo'lmadi (%s): %s", fallback_query, exc)
+        logger.warning("SoundCloud qidiruvi ishlamadi (%s): %s", fallback_query, exc)
+        return None
+    for candidate in found:
+        if candidate.url == url:
+            continue
+        # Ba'zi SoundCloud treklari DRM bilan himoyalangan — ularni o'tkazib, keyingisini sinaymiz
+        try:
+            return await asyncio.to_thread(_download_audio_sync, candidate.url, outdir)
+        except Exception as exc:
+            logger.info("SoundCloud trek yuklanmadi (%s): %s", candidate.url, exc)
+    logger.warning("SoundCloud'dan ham yuklab bo'lmadi: %s", fallback_query)
     return None
 
 

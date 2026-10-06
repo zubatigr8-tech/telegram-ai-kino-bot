@@ -27,7 +27,7 @@ from aiogram.utils.chat_action import ChatActionSender
 from sqlalchemy.exc import IntegrityError
 
 from bot.media.downloader import MediaError, VideoResult, download_video, find_and_download_song
-from bot.media.ffmpeg import to_mp3
+from bot.media.ffmpeg import has_audio, to_mp3
 from bot.media.links import PLATFORM_NAMES, find_supported_url, find_urls, normalize_url
 from bot.media.recognizer import Song, recognize_song, song_from_metadata
 from shared.config import settings
@@ -221,9 +221,12 @@ async def _process(message: Message, url: str, platform: str, status: Message) -
                 video_file_id = cached.video_file_id if cached else None
                 if video_file_id is None:
                     if video.path.stat().st_size <= _limit_bytes():
+                        caption = _video_caption(video.title, platform, mention)
+                        if not await has_audio(video.path):
+                            caption += "\n\n🔇 Platforma bu videoni serverga ovozsiz berdi."
                         sent = await message.answer_video(
                             FSInputFile(video.path),
-                            caption=_video_caption(video.title, platform, mention),
+                            caption=caption,
                             duration=int(video.duration) if video.duration else None,
                             width=video.width,
                             height=video.height,

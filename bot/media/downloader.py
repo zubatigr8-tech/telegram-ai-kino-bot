@@ -58,7 +58,7 @@ class AudioResult:
 class _QuietLogger:
     def debug(self, msg): pass
     def info(self, msg): pass
-    def warning(self, msg): logger.debug("yt-dlp: %s", msg)
+    def warning(self, msg): logger.warning("yt-dlp: %s", msg)  # masalan: "cookies are no longer valid"
     def error(self, msg): logger.info("yt-dlp: %s", msg)
 
 
@@ -95,7 +95,12 @@ def _cookie_file() -> str | None:
     global _env_cookie_path
     if settings.COOKIES_FILE and os.path.exists(settings.COOKIES_FILE):
         return settings.COOKIES_FILE
-    text = getattr(settings, "COOKIES_TEXT", "")
+    # COOKIES_TEXT, COOKIES_TEXT_INSTAGRAM, COOKIES_TEXT_YOUTUBE ... — hammasi bitta faylga qo'shiladi,
+    # shunda har bir sayt uchun cookies'ni alohida o'zgaruvchiga qo'yish mumkin
+    text = "\n".join(
+        value for name, value in sorted(os.environ.items())
+        if name.startswith("COOKIES_TEXT") and value.strip()
+    )
     if not text:
         return None
     if _env_cookie_path is None:
@@ -181,10 +186,11 @@ def _download_video_sync(url: str, outdir: Path, sort: list[str]) -> VideoResult
     path = _downloaded_path(entry)
     if path is None:
         raise MediaError("Video juda uzun yoki yuklab bo'lmadi.")
+    audio_formats = sum(1 for f in entry.get("formats") or [] if f.get("acodec") not in (None, "none"))
     logger.info(
-        "Yuklandi: %s | format=%s | %sx%s | video=%s | audio=%s",
+        "Yuklandi: %s | format=%s | %sx%s | video=%s | audio=%s | ovozli formatlar soni=%s | cookies=%s",
         entry.get("extractor_key"), entry.get("format_id"), entry.get("width"), entry.get("height"),
-        entry.get("vcodec"), entry.get("acodec"),
+        entry.get("vcodec"), entry.get("acodec"), audio_formats, "bor" if _cookie_file() else "yo'q",
     )
     return VideoResult(
         path=path,

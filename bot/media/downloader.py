@@ -3,12 +3,14 @@
 yt-dlp sinxron ishlaydi, shuning uchun uni alohida oqimda (asyncio.to_thread)
 chaqiramiz — aks holda yuklash vaqtida bot boshqa foydalanuvchilarga javob bera olmaydi."""
 import asyncio
+import json
 import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
 
 import yt_dlp
+from yt_dlp.cookies import YoutubeDLCookieJar
 from yt_dlp.utils import DownloadError, match_filter_func
 
 from bot.media.ffmpeg import ffmpeg_dir, has_audio, merge_audio
@@ -88,38 +90,103 @@ def _base_opts(outdir: Path) -> dict:
 
 
 _env_cookie_path: str | None = None
+_env_cookie_checked = False
+
+
+def _json_cookies_to_lines(raw: str) -> list[str]:
+    """Brauzer kengaytmasi JSON formatida eksport qilgan cookies'ni Netscape qatorlariga o'giradi."""
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        logger.warning("Cookies JSON'ga o'xshaydi, lekin uni o'qib bo'lmadi — e'tiborsiz qoldirildi")
+        return []
+    if isinstance(data, dict):
+        data = data.get("cookies") or [data]
+    lines = []
+    for c in data if isinstance(data, list) else []:
+        if not isinstance(c, dict) or not c.get("name") or not c.get("domain"):
+            continue
+        domain = str(c["domain"])
+        include_sub = not c.get("hostOnly", False) or domain.startswith(".")
+        expires = c.get("expirationDate") or c.get("expires") or 0
+        try:
+            expires = int(float(expires))
+        except (TypeError, ValueError):
+            expires = 0
+        prefix = "#HttpOnly_" if c.get("httpOnly") else ""
+        lines.append("\t".join([
+            prefix + domain, "TRUE" if include_sub else "FALSE", str(c.get("path") or "/"),
+            "TRUE" if c.get("secure") else "FALSE", str(max(expires, 0)),
+            str(c["name"]), str(c.get("value", "")),
+        ]))
+    return lines
+
+
+def _netscape_lines(raw: str) -> list[str]:
+    """Netscape matnidan faqat to'g'ri cookie qatorlarini oladi (buzuqlarini tashlab yuboradi)."""
+    lines = []
+    for line in raw.replace("\\n", "\n").splitlines():
+        line = line.strip()
+        if not line or (line.startswith("#") and not line.startswith("#HttpOnly_")):
+            continue
+        parts = line.split("\t") if "\t" in line else line.split(None, 6)
+        if len(parts) == 6:
+            parts.append("")  # qiymati bo'sh cookie
+        if len(parts) != 7:
+            continue
+        lines.append("\t".join(p.strip() for p in parts))
+    return lines
 
 
 def _cookie_file() -> str | None:
-    """COOKIES_FILE (fayl) yoki COOKIES_TEXT (hostingdagi o'zgaruvchi matni) dan cookies fayli yo'li."""
-    global _env_cookie_path
+    """COOKIES_FILE (fayl) yoki COOKIES_TEXT* (hostingdagi o'zgaruvchilar) dan cookies fayli yo'li.
+
+    Har qanday formatdagi xato cookies botni to'xtatmasligi kerak: JSON o'giriladi, buzuq qatorlar
+    tashlanadi, fayl baribir o'qilmasa — yuklash cookies'siz davom etadi."""
+    global _env_cookie_path, _env_cookie_checked
     if settings.COOKIES_FILE and os.path.exists(settings.COOKIES_FILE):
         return settings.COOKIES_FILE
-    # COOKIES_TEXT, COOKIES_TEXT_INSTAGRAM, COOKIES_TEXT_YOUTUBE ... — hammasi bitta faylga qo'shiladi,
-    # shunda har bir sayt uchun cookies'ni alohida o'zgaruvchiga qo'yish mumkin
-    text = "\n".join(
-        value for name, value in sorted(os.environ.items())
-        if name.startswith("COOKIES_TEXT") and value.strip()
-    )
-    if not text:
+    if _env_cookie_checked:
+        return _env_cookie_path
+    _env_cookie_checked = True
+
+    # COOKIES_TEXT, COOKIES_TEXT_INSTAGRAM, COOKIES_TEXT_YOUTUBE ... — hammasi bitta faylga qo'shiladi
+    lines = []
+    for name, value in sorted(os.environ.items()):
+        if not name.startswith("COOKIES_TEXT") or not value.strip():
+            continue
+        raw = value.strip().strip('"').strip()
+        found = _json_cookies_to_lines(raw) if raw.startswith(("[", "{")) else _netscape_lines(raw)
+        domains = sorted({line.split("\t")[0].replace("#HttpOnly_", "").lstrip(".") for line in found})
+        logger.info("%s: %d ta cookie (%s)", name, len(found), ", ".join(domains[:6]) or "—")
+        lines.extend(found)
+    if not lines:
         return None
-    if _env_cookie_path is None:
-        lines = ["# Netscape HTTP Cookie File"]
-        for line in text.replace("\\n", "\n").splitlines():
-            line = line.strip()
-            if not line or line.startswith("# "):
-                continue
-            if "\t" not in line and not line.startswith("#"):
-                # Nusxalashda tab belgilari bo'sh joyga aylangan bo'lishi mumkin — qayta tiklaymiz
-                parts = line.split(None, 6)
-                if len(parts) == 7:
-                    line = "\t".join(parts)
-            lines.append(line)
-        path = Path(settings.DOWNLOAD_DIR) / "cookies_from_env.txt"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        _env_cookie_path = str(path)
+
+    path = Path(settings.DOWNLOAD_DIR) / "cookies_from_env.txt"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("# Netscape HTTP Cookie File\n" + "\n".join(lines) + "\n", encoding="utf-8")
+    try:
+        YoutubeDLCookieJar(str(path)).load(ignore_discard=True, ignore_expires=True)
+    except Exception as exc:
+        logger.warning("Cookies faylini o'qib bo'lmadi, yuklash cookies'siz davom etadi: %s", exc)
+        return None
+    _env_cookie_path = str(path)
     return _env_cookie_path
+
+
+def _extract(opts: dict, url: str, download: bool) -> dict | None:
+    """yt-dlp'ni ishga tushiradi; cookies sababli xato bo'lsa — cookies'siz yana bir marta urinadi."""
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            return ydl.extract_info(url, download=download)
+    except DownloadError as exc:
+        if "cookiefile" not in opts or "cookie" not in str(exc).lower():
+            raise
+        logger.warning("Cookies bilan xato (%s) — cookies'siz qayta urinilmoqda", exc)
+        opts = {k: v for k, v in opts.items() if k != "cookiefile"}
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            return ydl.extract_info(url, download=download)
 
 
 def _first_entry(info: dict) -> dict:
@@ -175,8 +242,7 @@ def _download_video_sync(url: str, outdir: Path, sort: list[str]) -> VideoResult
         "match_filter": match_filter_func(f"duration <=? {settings.MAX_VIDEO_DURATION}"),
     })
     try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
+        info = _extract(opts, url, download=True)
     except DownloadError as exc:
         raise _friendly_error(exc) from exc
     if not info:
@@ -256,8 +322,7 @@ class SongCandidate:
 def _search_sync(prefix: str, query: str, limit: int) -> list[SongCandidate]:
     opts = _base_opts(Path(settings.DOWNLOAD_DIR))
     opts.update({"extract_flat": "in_playlist", "noplaylist": False, "playlistend": limit})
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(f"{prefix}{limit}:{query}", download=False)
+    info = _extract(opts, f"{prefix}{limit}:{query}", download=False)
     source = "soundcloud" if prefix == "scsearch" else "youtube"
     result = []
     for entry in (info or {}).get("entries") or []:
@@ -297,8 +362,7 @@ async def search_songs(query: str, limit: int = 6) -> list[SongCandidate]:
 def _download_audio_sync(url: str, outdir: Path) -> AudioResult:
     opts = _base_opts(outdir)
     opts["format"] = AUDIO_FORMAT
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
+    info = _extract(opts, url, download=True)
     entry = _first_entry(info)
     path = _downloaded_path(entry)
     if path is None:

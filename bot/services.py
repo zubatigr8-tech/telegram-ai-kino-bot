@@ -58,7 +58,6 @@ CARD_NUMBER = "card_number"
 CARD_OWNER = "card_owner"
 PREMIUM_PRICE = "premium_price"
 PREMIUM_ENABLED = "premium_enabled"
-AUTO_APPROVE = "auto_approve_join_requests"
 
 
 async def get_setting(key: str, default: str | None = None) -> str | None:

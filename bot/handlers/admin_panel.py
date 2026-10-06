@@ -22,7 +22,6 @@ from bot.filters import IsAdmin
 from bot.handlers.movie import movie_caption
 from bot.join_requests import channel_stats_text, create_request_link, request_counts
 from bot.services import (
-    AUTO_APPROVE,
     CARD_NUMBER,
     CARD_OWNER,
     PREMIUM_ENABLED,
@@ -203,8 +202,6 @@ async def bot_status(message: Message, state: FSMContext) -> None:
 async def channels_view(bot) -> tuple[str, InlineKeyboardMarkup]:
     async with get_session() as session:
         channels = list((await session.execute(select(Channel))).scalars().all())
-    auto = (await get_setting(AUTO_APPROVE, "1")) == "1"
-
     if channels:
         lines = []
         for c in channels:
@@ -214,10 +211,9 @@ async def channels_view(bot) -> tuple[str, InlineKeyboardMarkup]:
             except Exception:
                 members = "—"
             pending, _, total = await request_counts(c.chat_id)
-            mode = "📥 yig'ish" if c.collect_requests else "⚡ avto"
             lines.append(
                 f"{status} <b>{h(c.title or str(c.chat_id))}</b>\n"
-                f"    👥 {members} obunachi | 📨 {total} zayavka (⏳ {pending}) | {mode}"
+                f"    👥 {members} obunachi | 📨 {total} zayavka (⏳ {pending} tasdiq kutmoqda)"
             )
         body = "\n".join(lines)
     else:
@@ -227,16 +223,10 @@ async def channels_view(bot) -> tuple[str, InlineKeyboardMarkup]:
     for c in channels:
         kb.row(InlineKeyboardButton(text=f"⚙️ {(c.title or str(c.chat_id))[:30]}", callback_data=f"adm:c:open:{c.id}"))
     kb.row(InlineKeyboardButton(text="➕ Kanal qo'shish", callback_data="adm:c:add"))
-    kb.row(
-        InlineKeyboardButton(
-            text=f"⚡ Avto-tasdiqlash: {'✅ yoqilgan' if auto else '❌ o‘chirilgan'}",
-            callback_data="adm:c:auto",
-        )
-    )
     text = (
         f"📣 <b>Majburiy kanallar</b>\n\n{body}\n\n"
-        "Kanalni sozlash (kanal admini, zayavka yig'ish, hammasini tasdiqlash) uchun uni tanlang.\n"
-        "<i>⚡ avto — zayavkalar darhol tasdiqlanadi; 📥 yig'ish — kanal admini keyin hammasini birdan tasdiqlaydi.</i>"
+        "Kanalni sozlash (kanal admini, zayavka havolasi, hammasini tasdiqlash) uchun uni tanlang.\n"
+        "<i>Bot zayavkalarni o'zi tasdiqlamaydi — ular yig'ilib turadi va faqat siz tasdiqlaysiz.</i>"
     )
     return text, kb.as_markup()
 
@@ -278,8 +268,8 @@ async def channel_detail_view(bot, channel_id: int) -> tuple[str, InlineKeyboard
         kb.row(InlineKeyboardButton(text=f"✅ Hammasini tasdiqlash ({pending})", callback_data=f"jr:all:{c.id}"))
     kb.row(
         InlineKeyboardButton(
-            text="⚡ Avto-tasdiqlashga o'tish" if c.collect_requests else "📥 Zayavka yig'ishni yoqish",
-            callback_data=f"adm:c:mode:{c.id}",
+            text="🔗 Zayavka havolasini yangilash" if c.request_link else "🔗 Zayavka havolasini yaratish",
+            callback_data=f"adm:c:link:{c.id}",
         )
     )
     kb.row(InlineKeyboardButton(text="👤 Kanal adminini belgilash", callback_data=f"adm:c:owner:{c.id}"))
@@ -338,29 +328,25 @@ async def cb_delete_channel(callback: CallbackQuery) -> None:
     await rerender_channels(callback)
 
 
-@router.callback_query(F.data.startswith("adm:c:mode:"))
-async def cb_channel_mode(callback: CallbackQuery) -> None:
+@router.callback_query(F.data.startswith("adm:c:link:"))
+async def cb_channel_link(callback: CallbackQuery) -> None:
+    """Zayavka talab qiladigan yangi havola yaratadi (foydalanuvchilarga shu havola beriladi)."""
     channel_id = int(callback.data.split(":")[-1])
     async with get_session() as session:
         channel = await session.get(Channel, channel_id)
         if channel is None:
             await callback.answer("Kanal topilmadi.", show_alert=True)
             return
-        if not channel.collect_requests:
-            # Yig'ish rejimi uchun zayavka talab qiladigan maxsus havola kerak
-            try:
-                channel.request_link = await create_request_link(callback.bot, channel)
-            except Exception:
-                await callback.answer(
-                    "Havola yaratib bo'lmadi. Bot kanalda admin va \"Foydalanuvchilarni taklif qilish\" "
-                    "huquqi borligini tekshiring.",
-                    show_alert=True,
-                )
-                return
-        channel.collect_requests = not channel.collect_requests
-        enabled = channel.collect_requests
+        try:
+            channel.request_link = await create_request_link(callback.bot, channel)
+        except Exception:
+            await callback.answer(
+                "Havola yaratib bo'lmadi. Bot kanalda admin va \"Add members\" huquqi yoqilganini tekshiring.",
+                show_alert=True,
+            )
+            return
         await session.commit()
-    await callback.answer("📥 Zayavka yig'ish yoqildi" if enabled else "⚡ Avto-tasdiqlash yoqildi")
+    await callback.answer("🔗 Zayavka havolasi tayyor")
     await rerender_channel_detail(callback, channel_id)
 
 
@@ -417,14 +403,6 @@ async def channel_owner_receive(message: Message, state: FSMContext) -> None:
     except Exception:
         note = "⚠️ Unga xabar yuborib bo'lmadi — u avval botga /start bosishi kerak."
     await message.answer(f"✅ <b>{h(title)}</b> kanaliga kanal admini belgilandi: <code>{owner_id}</code>\n{note}")
-
-
-@router.callback_query(F.data == "adm:c:auto")
-async def cb_toggle_auto_approve(callback: CallbackQuery) -> None:
-    auto = (await get_setting(AUTO_APPROVE, "1")) == "1"
-    await set_setting(AUTO_APPROVE, "0" if auto else "1")
-    await callback.answer("Saqlandi ✅")
-    await rerender_channels(callback)
 
 
 @router.callback_query(F.data == "adm:c:add")

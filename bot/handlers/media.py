@@ -194,7 +194,8 @@ async def _send_original_audio(message: Message, video: VideoResult, workdir: Pa
 async def _process(message: Message, url: str, platform: str, status: Message) -> None:
     bot = message.bot
     mention = await _bot_mention(bot)
-    url_key = normalize_url(url)
+    # "v2:" — ovoz muammosi tuzatilgunga qadar keshlangan (ovozsiz bo'lishi mumkin) videolar qayta ishlatilmasin
+    url_key = "v2:" + normalize_url(url)
 
     # 1) Kesh: bu havola avval yuklangan bo'lsa — darhol yuboramiz
     cached = await _get_media(url_key)

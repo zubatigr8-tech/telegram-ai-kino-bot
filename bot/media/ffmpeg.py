@@ -79,3 +79,30 @@ async def to_mp3(src: Path, dst: Path, title: str | None = None, artist: str | N
         args += ["-metadata", f"artist={artist}"]
     args.append(str(dst))
     return await run_ffmpeg(*args, timeout=300) and dst.exists() and dst.stat().st_size > 1000
+
+
+async def has_audio(path: Path) -> bool:
+    """Faylda ovoz yo'lagi bormi (ffmpeg -i chiqishidagi "Audio:" qatori bo'yicha)."""
+    proc = await asyncio.create_subprocess_exec(
+        ffmpeg_exe(), "-hide_banner", "-i", str(path),
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()
+        return True  # aniqlay olmadik — ovoz bor deb hisoblaymiz, ortiqcha ish qilmaymiz
+    return "Audio:" in stderr.decode(errors="ignore")
+
+
+async def merge_audio(video: Path, audio: Path, dst: Path) -> bool:
+    """Ovozsiz videoga alohida audioni qo'shadi (video qayta kodlanmaydi — tez)."""
+    return await run_ffmpeg(
+        "-i", str(video), "-i", str(audio),
+        "-map", "0:v:0", "-map", "1:a:0",
+        "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+        "-shortest", "-movflags", "+faststart", str(dst),
+        timeout=300,
+    ) and dst.exists() and dst.stat().st_size > 1000

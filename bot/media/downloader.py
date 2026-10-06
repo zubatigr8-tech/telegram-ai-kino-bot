@@ -11,20 +11,20 @@ from pathlib import Path
 import yt_dlp
 from yt_dlp.utils import DownloadError, match_filter_func
 
-from bot.media.ffmpeg import ffmpeg_dir
+from bot.media.ffmpeg import ffmpeg_dir, has_audio, merge_audio
 from shared.config import settings
 
 logger = logging.getLogger(__name__)
 
-# 720p gacha, Telegram'da to'g'ridan-to'g'ri o'ynaydigan mp4 (h264 + aac)
-VIDEO_FORMAT = (
-    "bv*[height<=720][ext=mp4][vcodec^=avc]+ba[ext=m4a]"
-    "/b[height<=720][ext=mp4]"
-    "/bv*[height<=720]+ba"
-    "/b[height<=720]/b"
-)
+# Avval alohida video + alohida ovoz (Instagram/YouTube ovozni ko'pincha alohida oqimda beradi),
+# bo'lmasa — ovozi ichida bo'lgan bitta fayl. Sifat chegarasi formatda EMAS, saralashda (format_sort):
+# avvalgi "height<=720" vertikal videolarni (720x1280 — Reels/Shorts/TikTok) butunlay chiqarib
+# tashlab, ovozsiz zaxira variantga tushib qolardi.
+VIDEO_FORMAT = "bv+ba/b"
+# "res" — videoning KICHIK tomoni, ya'ni vertikal 720x1280 ham "720p" hisoblanadi
+VIDEO_SORT = ["res:720", "vcodec:h264", "acodec:aac", "ext:mp4:m4a"]
 # Birinchi urinish 50 MB dan oshsa — pastroq sifat
-SMALL_VIDEO_FORMAT = "b[height<=480][ext=mp4]/bv*[height<=480]+ba/b[height<=480]/worst"
+SMALL_VIDEO_SORT = ["res:480", "vcodec:h264", "acodec:aac", "ext:mp4:m4a"]
 AUDIO_FORMAT = "ba[ext=m4a]/ba[ext=mp3]/ba/b"
 MAX_SONG_DURATION = 15 * 60
 
@@ -161,10 +161,11 @@ def _friendly_error(exc: Exception) -> MediaError:
     return MediaError("Videoni yuklab bo'lmadi. Havolani tekshirib, qaytadan urinib ko'ring.")
 
 
-def _download_video_sync(url: str, outdir: Path, fmt: str) -> VideoResult:
+def _download_video_sync(url: str, outdir: Path, sort: list[str]) -> VideoResult:
     opts = _base_opts(outdir)
     opts.update({
-        "format": fmt,
+        "format": VIDEO_FORMAT,
+        "format_sort": sort,
         "merge_output_format": "mp4",
         "match_filter": match_filter_func(f"duration <=? {settings.MAX_VIDEO_DURATION}"),
     })
@@ -180,6 +181,11 @@ def _download_video_sync(url: str, outdir: Path, fmt: str) -> VideoResult:
     path = _downloaded_path(entry)
     if path is None:
         raise MediaError("Video juda uzun yoki yuklab bo'lmadi.")
+    logger.info(
+        "Yuklandi: %s | format=%s | %sx%s | video=%s | audio=%s",
+        entry.get("extractor_key"), entry.get("format_id"), entry.get("width"), entry.get("height"),
+        entry.get("vcodec"), entry.get("acodec"),
+    )
     return VideoResult(
         path=path,
         title=entry.get("title") or entry.get("description"),
@@ -192,23 +198,43 @@ def _download_video_sync(url: str, outdir: Path, fmt: str) -> VideoResult:
     )
 
 
+async def _ensure_audio(url: str, result: VideoResult, outdir: Path) -> VideoResult:
+    """Videoda ovoz yo'lagi bo'lmasa — audioni alohida yuklab, videoga qo'shadi."""
+    if await has_audio(result.path):
+        return result
+    logger.warning("Video ovozsiz yuklandi, audio alohida yuklanmoqda: %s", url)
+    audio_dir = outdir / "audio"
+    audio_dir.mkdir(exist_ok=True)
+    try:
+        audio = await asyncio.to_thread(_download_audio_sync, url, audio_dir)
+    except (DownloadError, MediaError) as exc:
+        logger.warning("Audioni alohida yuklab bo'lmadi: %s", exc)
+        return result
+    if not await has_audio(audio.path):
+        logger.warning("Alohida yuklangan faylda ham ovoz yo'q: %s", url)
+        return result
+    merged = outdir / "merged.mp4"
+    if await merge_audio(result.path, audio.path, merged):
+        result.path.unlink(missing_ok=True)
+        result.path = merged
+    return result
+
+
 async def download_video(url: str, outdir: Path) -> VideoResult:
     limit = settings.MAX_UPLOAD_MB * 1024 * 1024
-    result = await asyncio.to_thread(_download_video_sync, url, outdir, VIDEO_FORMAT)
-    if result.path.stat().st_size <= limit:
-        return result
-
-    # Juda katta — pastroq sifatda qayta urinib ko'ramiz (katta fayl ham qo'shiqni aniqlash uchun qoladi)
-    small_dir = outdir / "small"
-    small_dir.mkdir(exist_ok=True)
-    try:
-        small = await asyncio.to_thread(_download_video_sync, url, small_dir, SMALL_VIDEO_FORMAT)
-    except MediaError:
-        return result
-    if small.path.stat().st_size < result.path.stat().st_size:
-        result.path.unlink(missing_ok=True)
-        return small
-    return result
+    result = await asyncio.to_thread(_download_video_sync, url, outdir, VIDEO_SORT)
+    if result.path.stat().st_size > limit:
+        # Juda katta — pastroq sifatda qayta urinib ko'ramiz (katta fayl ham qo'shiqni aniqlash uchun qoladi)
+        small_dir = outdir / "small"
+        small_dir.mkdir(exist_ok=True)
+        try:
+            small = await asyncio.to_thread(_download_video_sync, url, small_dir, SMALL_VIDEO_SORT)
+        except MediaError:
+            small = None
+        if small is not None and small.path.stat().st_size < result.path.stat().st_size:
+            result.path.unlink(missing_ok=True)
+            result = small
+    return await _ensure_audio(url, result, outdir)
 
 
 @dataclass

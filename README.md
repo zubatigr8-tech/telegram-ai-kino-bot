@@ -153,6 +153,38 @@ Bot ishga tushganda va har 6 soatda avtomatik ravishda ma'lumotlar bazasining
 zaxira nusxasini `backups/` papkasiga oladi (oxirgi 20 tasi saqlanadi, eskilari
 o'zi o'chadi). Qo'lda hech narsa qilish shart emas.
 
+## 🩸 Qon tahlili boti (`qon_tahlili/`)
+
+Kino botdan **alohida** bot: foydalanuvchi qon tahlili natijalarini yuboradi, bot esa
+- har bir ko'rsatkichni jins/yoshga mos norma bilan solishtiradi (⬇️ / ✅ / ⬆️ / 🚨 xavfli daraja),
+- **hozirgi holat** bo'yicha ehtimoliy sabablarni ko'rsatadi (kamqonlik turlari, infeksiya, diabet, jigar, buyrak, qalqonsimon bez, elektrolitlar...),
+- **kelajakdagi xavflarni** aytadi (prediabet → diabet, dislipidemiya → infarkt/insult, metabolik sindrom, podagra, osteoporoz, buyrak faoliyati pasayishi...),
+- har biri uchun **chora-tadbirlar**, qaysi **shifokorga** borish va qanday **qo'shimcha tahlillar** kerakligini yozadi,
+- xavfli qiymatlarda 🚨 shoshilinch ogohlantirish beradi (103).
+
+> ⚠️ Dastur shifokor emas va tashxis qo'ymaydi — u natijani tushunish va shifokorga to'g'ri savol bilan borish uchun.
+> Dori dozalari hech qachon tavsiya qilinmaydi. Tahlil natijalari bazaga **saqlanmaydi**.
+
+**Qo'llab-quvvatlanadigan ko'rsatkichlar (38 ta):** gemoglobin, eritrotsit, gematokrit, MCV, MCH, leykotsit va
+leykoformula, trombotsit, ECHT; glyukoza, HbA1c; xolesterin, LDL, HDL, triglitseridlar; ALT, AST, GGT, ishqoriy
+fosfataza, bilirubin, umumiy oqsil, albumin; kreatinin (+ eGFR CKD-EPI 2021), mochevina, siydik kislotasi; TTG, erkin T4;
+ferritin, temir, B12, vitamin D; CRP, kaliy, natriy, kalsiy. Nomlar o'zbekcha, ruscha yoki inglizcha yozilishi mumkin,
+mg/dL kabi boshqa birliklar ko'p hollarda avtomatik o'giriladi.
+
+**Ishga tushirish:**
+1. @BotFather'da yangi bot oching, tokenni `.env` dagi `QON_BOT_TOKEN` ga yozing.
+2. (Ixtiyoriy) blankani rasmdan o'qish uchun `ANTHROPIC_API_KEY` ni kiriting.
+3. `python -m qon_tahlili.bot`
+
+**Terminalda sinash:**
+```bash
+python -m qon_tahlili.cli --jins f --yosh 52 "Gemoglobin 98, MCV 74, ferritin 9, glyukoza 6.1, LDL 4.2"
+```
+
+**Testlar:** `pip install pytest && python -m pytest tests`
+
+Yangi qoida qo'shish: `qon_tahlili/markers.py` — ko'rsatkich va normalar, `qon_tahlili/analyzer.py` — kasallik/xavf qoidalari.
+
 ## Kengaytirish g'oyalari
 
 - Ko'p tilli interfeys

@@ -16,7 +16,7 @@ from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, Inli
 from aiogram.utils.chat_action import ChatActionSender
 
 from bot.handlers.media import _bot_mention, _download_slots, _get_song, _limit_bytes, _save_song
-from bot.media.downloader import SongCandidate, download_song, search_songs
+from bot.media.downloader import SongCandidate, download_song, find_and_download_song, search_songs
 from bot.media.links import find_urls
 from shared.config import settings
 from shared.db.models import SongCache
@@ -108,7 +108,12 @@ async def send_selected_song(callback: CallbackQuery) -> None:
     try:
         async with _download_slots:
             async with ChatActionSender(bot=callback.bot, chat_id=message.chat.id, action=ChatAction.UPLOAD_VOICE):
-                audio = await download_song(candidate.url, caption_name, workdir)
+                if candidate.source == "deezer":
+                    # Deezer'dan faqat nomi topilgan — audioni nomi bo'yicha YouTube/SoundCloud'dan olamiz
+                    query = f"{candidate.artist} - {candidate.title}" if candidate.artist else candidate.title
+                    audio = await find_and_download_song(query, workdir)
+                else:
+                    audio = await download_song(candidate.url, caption_name, workdir)
                 if audio is None:
                     await message.answer("❌ Bu qo'shiqni yuklab bo'lmadi. Ro'yxatdan boshqasini tanlab ko'ring.")
                     return

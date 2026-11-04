@@ -7,6 +7,8 @@ import json
 import logging
 import os
 import re
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -376,7 +378,15 @@ class SongCandidate:
 def _search_sync(prefix: str, query: str, limit: int) -> list[SongCandidate]:
     opts = _base_opts(Path(settings.DOWNLOAD_DIR))
     opts.update({"extract_flat": "in_playlist", "noplaylist": False, "playlistend": limit})
-    info = _extract(opts, f"{prefix}{limit}:{query}", download=False)
+    target = f"{prefix}{limit}:{query}"
+    try:
+        info = _extract(opts, target, download=False)
+    except DownloadError:
+        # Qidiruv uchun login shart emas: eskirgan cookies YouTube qidiruvini buzishi mumkin
+        if "cookiefile" not in opts:
+            raise
+        opts.pop("cookiefile")
+        info = _extract(opts, target, download=False)
     source = "soundcloud" if prefix == "scsearch" else "youtube"
     result = []
     for entry in (info or {}).get("entries") or []:
@@ -400,14 +410,48 @@ def _search_sync(prefix: str, query: str, limit: int) -> list[SongCandidate]:
     return result
 
 
-async def search_songs(query: str, limit: int = 6) -> list[SongCandidate]:
-    """Qo'shiq nomi yoki matni (lyrics) bo'yicha qidiradi: avval YouTube, bo'lmasa SoundCloud."""
-    for prefix, q in (("ytsearch", f"{query} lyrics"), ("ytsearch", query), ("scsearch", query)):
-        try:
-            found = await asyncio.to_thread(_search_sync, prefix, q, limit)
-        except Exception as exc:  # qidiruv sahifasi to'silgan bo'lishi mumkin — keyingi manbaga o'tamiz
-            logger.warning("Qidiruv xatosi (%s %s): %s", prefix, q, exc)
+def _deezer_search_sync(query: str, limit: int) -> list[SongCandidate]:
+    """Deezer katalogi (kalit talab qilinmaydi, serverlarni to'smaydi) — faqat qo'shiq nomi va ijrochisi.
+    Audio keyin "ijrochi - nom" bo'yicha YouTube/SoundCloud'dan yuklanadi."""
+    url = "https://api.deezer.com/search?" + urllib.parse.urlencode({"q": query, "limit": limit})
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(request, timeout=15) as response:
+        data = json.load(response)
+    result = []
+    for item in data.get("data") or []:
+        title = item.get("title")
+        if not title:
             continue
+        result.append(SongCandidate(
+            url=item.get("link") or f"deezer:{item.get('id')}",
+            title=title,
+            artist=(item.get("artist") or {}).get("name"),
+            duration=item.get("duration") or None,
+            source="deezer",
+        ))
+    return result
+
+
+async def search_songs(query: str, limit: int = 6, downloadable_only: bool = False) -> list[SongCandidate]:
+    """Qo'shiq nomi yoki matni (lyrics) bo'yicha qidiradi: YouTube → SoundCloud → Deezer katalogi.
+    downloadable_only=True bo'lsa, faqat to'g'ridan-to'g'ri yuklab bo'ladigan manbalar (Deezer'siz)."""
+    sources = [
+        ("ytsearch", f"{query} lyrics"),
+        ("ytsearch", query),
+        ("scsearch", query),
+    ]
+    if not downloadable_only:
+        sources.append(("deezer", query))
+    for prefix, q in sources:
+        try:
+            if prefix == "deezer":
+                found = await asyncio.to_thread(_deezer_search_sync, q, limit)
+            else:
+                found = await asyncio.to_thread(_search_sync, prefix, q, limit)
+        except Exception as exc:  # qidiruv sahifasi to'silgan bo'lishi mumkin — keyingi manbaga o'tamiz
+            logger.warning("Qidiruv xatosi (%s «%s»): %s", prefix, q, exc)
+            continue
+        logger.info("Qidiruv: %s «%s» → %d ta natija", prefix, q, len(found))
         if found:
             return found[:limit]
     return []
@@ -455,7 +499,7 @@ async def download_song(url: str, fallback_query: str, outdir: Path) -> AudioRes
 
 async def find_and_download_song(query: str, outdir: Path) -> AudioResult | None:
     """Aniqlangan qo'shiqning to'liq versiyasini qidirib, audiosini yuklaydi."""
-    candidates = await search_songs(query, limit=5)
+    candidates = await search_songs(query, limit=5, downloadable_only=True)
     if not candidates:
         return None
     return await download_song(candidates[0].url, query, outdir)

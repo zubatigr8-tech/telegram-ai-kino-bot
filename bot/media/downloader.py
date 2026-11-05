@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import time
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -365,6 +366,42 @@ async def download_video(url: str, outdir: Path) -> VideoResult:
     return await _ensure_audio(url, result, outdir)
 
 
+# Qo'shiq nomidan olib tashlanadigan "shovqin" so'zlar (YouTube sarlavhalarida ko'p uchraydi)
+_NOISE = re.compile(
+    r"(?<!\w)(?:lyrics?|lirik[ai]?|karaok[eiy]|караоке|текст(?:\s+песни)?|"
+    r"qo['ʻ‘’`]?shiq\s+matni|matni|official(?:\s+music)?(?:\s+video|\s+audio|\s+clip)?|"
+    r"music\s+video|video\s*clip|videoclip|video\s*klip|klip|clip|audio|mp3|hd|hq|4k|"
+    r"live|jonli(?:\s+ijro)?|premyera|premiere)(?!\w)",
+    re.IGNORECASE,
+)
+_YEAR = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
+_BRACKETS = re.compile(r"[(\[{【「]([^)\]}】」]*)[)\]}】」]")
+
+
+def clean_song_query(title: str) -> str:
+    """YouTube sarlavhasini qidiruv uchun toza "ijrochi - nom" ko'rinishiga keltiradi:
+    "Sardor Mirzaliyev - Maxluqolar | Videoclip 2026" → "Sardor Mirzaliyev - Maxluqolar"."""
+    text = title or ""
+    # Qavs ichida shovqin so'z yoki yil bo'lsa — qavsni butunlay olib tashlaymiz, (feat. X) kabilar qoladi
+    text = _BRACKETS.sub(lambda m: " " if _NOISE.search(m.group(1)) or _YEAR.search(m.group(1)) else m.group(0), text)
+    text = re.split(r"[|│｜]", text)[0]  # "Nom | Kanal nomi"
+    text = _NOISE.sub(" ", text)
+    text = _YEAR.sub(" ", text)
+    text = re.sub(r"[^\w\s'ʻ‘’`&.,()\-–—]", " ", text)  # emoji va belgilar
+    text = re.sub(r"\(\s*\)", " ", text)
+    text = re.sub(r"\s+", " ", text).strip(" -–—,.")
+    return text or (title or "").strip()
+
+
+def split_artist_title(title: str) -> tuple[str | None, str]:
+    """ "Ijrochi - Nom" ko'rinishidagi sarlavhani ajratadi. Ajratib bo'lmasa — (None, toza nom)."""
+    clean = clean_song_query(title)
+    parts = re.split(r"\s+[-–—]\s*|\s*[-–—]\s+", clean, maxsplit=1)
+    if len(parts) == 2 and parts[0].strip() and parts[1].strip():
+        return parts[0].strip(), parts[1].strip()
+    return None, clean
+
+
 @dataclass
 class SongCandidate:
     """Qidiruv natijasidagi bitta qo'shiq."""
@@ -457,42 +494,119 @@ async def search_songs(query: str, limit: int = 6, downloadable_only: bool = Fal
     return []
 
 
-def _download_audio_sync(url: str, outdir: Path) -> AudioResult:
+def _is_youtube(url: str) -> bool:
+    host = urllib.parse.urlparse(url).netloc.lower()
+    return host.endswith("youtube.com") or host.endswith("youtu.be")
+
+
+def _alt_youtube_clients() -> list[str]:
+    """Standart klient to'silganda sinab ko'riladigan YouTube klientlari (faqat shu yt-dlp versiyasida borlari)."""
+    wanted = ["android_vr", "tv_simply", "web_safari", "mweb", "ios", "tv"]
+    try:
+        from yt_dlp.extractor.youtube._base import INNERTUBE_CLIENTS
+    except ImportError:
+        try:
+            from yt_dlp.extractor.youtube import INNERTUBE_CLIENTS
+        except ImportError:
+            return wanted
+    return [c for c in wanted if c in INNERTUBE_CLIENTS]
+
+
+# YouTube server IP manzilini "bot" deb to'sgan oxirgi vaqt (admin'ga ogohlantirish uchun)
+_youtube_blocked_at = 0.0
+
+
+def _note_youtube_block(exc: Exception) -> None:
+    global _youtube_blocked_at
+    text = str(exc).lower()
+    if "not a bot" in text or "confirm you" in text or "sign in" in text:
+        _youtube_blocked_at = time.monotonic()
+
+
+def youtube_blocked_recently(seconds: float = 600) -> bool:
+    return bool(_youtube_blocked_at) and time.monotonic() - _youtube_blocked_at < seconds
+
+
+def _audio_attempts(url: str, outdir: Path) -> list[tuple[str, dict]]:
+    """Audio yuklash urinishlari. YouTube hosting IP'larini tez-tez to'sadi: shunda cookies'siz va
+    boshqa klientlar (android_vr, tv...) bilan qayta urinamiz — ular ko'pincha to'silmaydi."""
     opts = _base_opts(outdir)
     opts["format"] = AUDIO_FORMAT
-    info = _extract(opts, url, download=True)
-    entry = _first_entry(info)
-    path = _downloaded_path(entry)
-    if path is None:
-        raise MediaError("Qo'shiqni yuklab bo'lmadi.")
-    return AudioResult(
-        path=path,
-        title=entry.get("track") or entry.get("title"),
-        artist=entry.get("artist") or entry.get("uploader"),
-        duration=entry.get("duration"),
-        webpage_url=entry.get("webpage_url") or url,
-    )
+    attempts = [("standart", opts)]
+    if not _is_youtube(url):
+        return attempts
+    no_cookies = {k: v for k, v in opts.items() if k != "cookiefile"}
+    if "cookiefile" in opts:
+        attempts.append(("cookies'siz", no_cookies))
+    clients = _alt_youtube_clients()
+    if clients:
+        attempts.append((
+            f"klientlar: {','.join(clients)}",
+            {**no_cookies, "extractor_args": {"youtube": {"player_client": clients}}},
+        ))
+    return attempts
 
 
-async def download_song(url: str, fallback_query: str, outdir: Path) -> AudioResult | None:
-    """Audioni yuklaydi. YouTube hostingni to'sib qo'ysa — xuddi shu qo'shiqni SoundCloud'dan qidiradi."""
+def _download_audio_sync(url: str, outdir: Path) -> AudioResult:
+    last_exc: Exception | None = None
+    for name, opts in _audio_attempts(url, outdir):
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+            entry = _first_entry(info or {})
+            path = _downloaded_path(entry)
+            if path is None:
+                raise MediaError("Qo'shiqni yuklab bo'lmadi.")
+        except (DownloadError, MediaError) as exc:
+            last_exc = exc
+            if _is_youtube(url):
+                _note_youtube_block(exc)
+            logger.warning("Audio yuklanmadi [%s] %s: %s", name, url, exc)
+            continue
+        if name != "standart":
+            logger.info("Audio yuklandi [%s]: %s", name, url)
+        return AudioResult(
+            path=path,
+            title=entry.get("track") or entry.get("title"),
+            artist=entry.get("artist") or entry.get("uploader"),
+            duration=entry.get("duration"),
+            webpage_url=entry.get("webpage_url") or url,
+        )
+    raise last_exc or MediaError("Qo'shiqni yuklab bo'lmadi.")
+
+
+async def download_song(url: str, fallback_query: str, outdir: Path,
+                        expected_duration: float | None = None) -> AudioResult | None:
+    """Audioni yuklaydi. YouTube hostingni to'sib qo'ysa — xuddi shu qo'shiqni SoundCloud'dan qidiradi.
+
+    fallback_query — toza "ijrochi - nom" (kanal nomi va "lyrics" kabi so'zlarsiz), aks holda
+    SoundCloud hech narsa topmaydi."""
     try:
         return await asyncio.to_thread(_download_audio_sync, url, outdir)
-    except (DownloadError, MediaError) as exc:
-        logger.warning("Audio yuklanmadi (%s): %s", url, exc)
-    try:
-        found = await asyncio.to_thread(_search_sync, "scsearch", fallback_query, 6)
     except Exception as exc:
-        logger.warning("SoundCloud qidiruvi ishlamadi (%s): %s", fallback_query, exc)
-        return None
-    for candidate in found:
-        if candidate.url == url:
-            continue
-        # Ba'zi SoundCloud treklari DRM bilan himoyalangan — ularni o'tkazib, keyingisini sinaymiz
+        logger.warning("Audio yuklanmadi (%s): %s", url, exc)
+
+    queries = list(dict.fromkeys(q for q in (clean_song_query(fallback_query), fallback_query) if q))
+    tried = {url}
+    for query in queries:
         try:
-            return await asyncio.to_thread(_download_audio_sync, candidate.url, outdir)
+            found = await asyncio.to_thread(_search_sync, "scsearch", query, 8)
         except Exception as exc:
-            logger.info("SoundCloud trek yuklanmadi (%s): %s", candidate.url, exc)
+            logger.warning("SoundCloud qidiruvi ishlamadi (%s): %s", query, exc)
+            continue
+        logger.info("SoundCloud zaxira qidiruvi «%s» → %d ta natija", query, len(found))
+        if expected_duration:
+            # Davomiyligi mos keladigan treklar oldinga (tartib shu guruhlar ichida saqlanadi)
+            found.sort(key=lambda c: not (c.duration and abs(c.duration - expected_duration) <= 25))
+        for candidate in found:
+            if candidate.url in tried:
+                continue
+            tried.add(candidate.url)
+            # Ba'zi SoundCloud treklari DRM bilan himoyalangan — ularni o'tkazib, keyingisini sinaymiz
+            try:
+                return await asyncio.to_thread(_download_audio_sync, candidate.url, outdir)
+            except Exception as exc:
+                logger.info("SoundCloud trek yuklanmadi (%s): %s", candidate.url, exc)
     logger.warning("SoundCloud'dan ham yuklab bo'lmadi: %s", fallback_query)
     return None
 

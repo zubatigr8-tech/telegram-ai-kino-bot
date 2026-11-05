@@ -11,6 +11,7 @@ Bir xil havola va qo'shiqlar keshlanadi: qayta so'ralganda Telegram file_id orqa
 import asyncio
 import logging
 import shutil
+import time
 import tempfile
 from html import escape as h
 from pathlib import Path
@@ -26,7 +27,13 @@ from aiogram.types import (
 from aiogram.utils.chat_action import ChatActionSender
 from sqlalchemy.exc import IntegrityError
 
-from bot.media.downloader import MediaError, VideoResult, download_video, find_and_download_song
+from bot.media.downloader import (
+    MediaError,
+    VideoResult,
+    download_video,
+    find_and_download_song,
+    youtube_blocked_recently,
+)
 from bot.media.ffmpeg import has_audio, to_mp3
 from bot.media.links import PLATFORM_NAMES, find_supported_url, find_urls, normalize_url
 from bot.media.recognizer import Song, recognize_song, song_from_metadata
@@ -77,6 +84,31 @@ def _video_caption(title: str | None, platform: str, mention: str) -> str:
         footer += f" • {mention}"
     lines.append(footer)
     return "\n\n".join(lines)
+
+
+_last_block_alert = 0.0
+BLOCK_ALERT_INTERVAL = 3 * 3600
+
+
+async def notify_admins_if_blocked(bot: Bot) -> None:
+    """YouTube serverni "bot" deb to'sgani sababli qo'shiq yuklanmasa — adminlarga (3 soatda bir marta)
+    yechimini aytadi: cookies yuklash yoki yt-dlp'ni yangilash."""
+    global _last_block_alert
+    if not youtube_blocked_recently() or time.monotonic() - _last_block_alert < BLOCK_ALERT_INTERVAL:
+        return
+    _last_block_alert = time.monotonic()
+    text = (
+        "⚠️ <b>YouTube serverni bloklayapti</b> — qo'shiqlar YouTube'dan yuklanmayapti "
+        "(bot SoundCloud'dan topishga harakat qiladi, lekin hamma qo'shiq u yerda yo'q).\n\n"
+        "Yechim:\n"
+        "1. YouTube akkauntingiz cookies faylini botga yuboring — /cookies (yo'riqnoma).\n"
+        "2. Railway'da Redeploy qiling — eng yangi yt-dlp o'rnatiladi."
+    )
+    for admin_id in settings.ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, text)
+        except Exception:
+            pass
 
 
 # ---------- Kesh ----------
@@ -150,6 +182,8 @@ async def _deliver_song(message: Message, song: Song, workdir: Path, mention: st
         audio = await find_and_download_song(song.query, workdir / "song")
         if audio is None or audio.path.stat().st_size > _limit_bytes():
             await _save_song(row)
+            if audio is None:
+                await notify_admins_if_blocked(message.bot)
             return False
         row.youtube_url = audio.webpage_url
         sent = await message.answer_audio(

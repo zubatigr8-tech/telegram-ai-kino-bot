@@ -15,8 +15,14 @@ from aiogram.enums import ChatAction
 from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.utils.chat_action import ChatActionSender
 
-from bot.handlers.media import _bot_mention, _download_slots, _get_song, _limit_bytes, _save_song
-from bot.media.downloader import SongCandidate, download_song, find_and_download_song, search_songs
+from bot.handlers.media import _bot_mention, _download_slots, _get_song, _limit_bytes, _save_song, notify_admins_if_blocked
+from bot.media.downloader import (
+    SongCandidate,
+    download_song,
+    find_and_download_song,
+    search_songs,
+    split_artist_title,
+)
 from bot.media.links import find_urls
 from shared.config import settings
 from shared.db.models import SongCache
@@ -94,7 +100,15 @@ async def send_selected_song(callback: CallbackQuery) -> None:
     message = callback.message
     mention = await _bot_mention(callback.bot)
     song_key = f"src:{candidate.url}"[:512]
-    caption_name = f"{candidate.artist} — {candidate.title}" if candidate.artist else candidate.title
+    if candidate.source == "deezer":
+        artist, title = candidate.artist, candidate.title
+    else:
+        # YouTube/SoundCloud'da "artist" — bu kanal nomi (masalan "Lyricbobo"), qo'shiq ijrochisi emas:
+        # ijrochi va nomni sarlavhaning o'zidan ajratamiz ("Ijrochi - Nom (Lyrics)")
+        artist, title = split_artist_title(candidate.title)
+    caption_name = f"{artist} — {title}" if artist else title
+    # Zaxira (SoundCloud) qidiruvi uchun toza so'rov: kanal nomi va "lyrics" kabi so'zlarsiz
+    query = f"{artist} - {title}" if artist else title
     caption = f"🎵 <b>{h(caption_name)}</b>" + (f"\n\n📥 {mention}" if mention else "")
 
     cached = await _get_song(song_key)
@@ -110,26 +124,29 @@ async def send_selected_song(callback: CallbackQuery) -> None:
             async with ChatActionSender(bot=callback.bot, chat_id=message.chat.id, action=ChatAction.UPLOAD_VOICE):
                 if candidate.source == "deezer":
                     # Deezer'dan faqat nomi topilgan — audioni nomi bo'yicha YouTube/SoundCloud'dan olamiz
-                    query = f"{candidate.artist} - {candidate.title}" if candidate.artist else candidate.title
                     audio = await find_and_download_song(query, workdir)
                 else:
-                    audio = await download_song(candidate.url, caption_name, workdir)
+                    audio = await download_song(candidate.url, query, workdir, expected_duration=candidate.duration)
                 if audio is None:
-                    await message.answer("❌ Bu qo'shiqni yuklab bo'lmadi. Ro'yxatdan boshqasini tanlab ko'ring.")
+                    await message.answer(
+                        f"❌ «{h(caption_name[:80])}» qo'shig'ini yuklab bo'lmadi.\n\n"
+                        "Ro'yxatdan boshqasini tanlang yoki qo'shiq nomini boshqacha yozib ko'ring."
+                    )
+                    await notify_admins_if_blocked(callback.bot)
                     return
                 if audio.path.stat().st_size > _limit_bytes():
                     await message.answer("❌ Qo'shiq fayli juda katta, Telegram orqali yuborib bo'lmaydi.")
                     return
                 sent = await message.answer_audio(
                     FSInputFile(audio.path, filename=f"{caption_name[:60]}{audio.path.suffix}"),
-                    title=candidate.title[:64],
-                    performer=(candidate.artist or "")[:64] or None,
+                    title=title[:64],
+                    performer=(artist or "")[:64] or None,
                     duration=int(audio.duration) if audio.duration else None,
                     caption=caption,
                 )
         file_id = sent.audio.file_id if sent.audio else (sent.document.file_id if sent.document else None)
         await _save_song(SongCache(
-            song_key=song_key, title=candidate.title[:255], artist=(candidate.artist or "")[:255] or None,
+            song_key=song_key, title=title[:255], artist=(artist or "")[:255] or None,
             audio_file_id=file_id, youtube_url=candidate.url if candidate.source == "youtube" else None,
         ))
     except Exception:

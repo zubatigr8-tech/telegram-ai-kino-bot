@@ -61,6 +61,20 @@ class Settings:
         "Qo'shiq matnidan parcha yozsangiz ham qo'shiqni topaman 🎵",
     ).replace("\\n", "\n")
 
+    # --- Bot profilida obunachilar soni ---
+    # Profildagi qisqa tavsif (nom ostida) va /start'dan oldingi tavsif; {count} — obunachilar soni
+    SHOW_SUBSCRIBER_COUNT: bool = os.getenv("SHOW_SUBSCRIBER_COUNT", "true").lower() in ("1", "true", "yes", "ha")
+    BOT_SHORT_DESCRIPTION: str = os.getenv(
+        "BOT_SHORT_DESCRIPTION",
+        "👥 {count} obunachi • 🎵 Qo'shiq va videolarni yuklab beraman",
+    ).replace("\\n", "\n")
+    BOT_DESCRIPTION: str = os.getenv(
+        "BOT_DESCRIPTION",
+        "👥 {count} obunachi\n\n"
+        "🎵 Qo'shiq nomi, ijrochisi yoki matnidan parcha yozing — qo'shiqni topib beraman.\n"
+        "📥 Instagram, YouTube va TikTok havolasini yuboring — videoni va undagi qo'shiqni yuklab beraman.",
+    ).replace("\\n", "\n")
+
     ADMIN_PANEL_SECRET_KEY: str = os.getenv("ADMIN_PANEL_SECRET_KEY", "dev-secret-key")
     ADMIN_PANEL_USERNAME: str = os.getenv("ADMIN_PANEL_USERNAME", "admin")
     ADMIN_PANEL_PASSWORD: str = os.getenv("ADMIN_PANEL_PASSWORD", "admin")

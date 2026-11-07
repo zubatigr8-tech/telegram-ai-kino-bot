@@ -13,6 +13,7 @@ from aiogram.types import ErrorEvent
 
 from bot.backup_worker import run_backup_worker
 from bot.broadcast_worker import run_broadcast_worker
+from bot.stats_worker import run_stats_worker
 from bot.handlers import admin_panel, admin_tools, fallback, join_requests, media, music, start
 from bot.middlewares import SubscriptionMiddleware, UserMiddleware
 from shared.config import settings
@@ -99,6 +100,7 @@ async def main() -> None:
     workers = [
         asyncio.create_task(run_broadcast_worker(bot)),
         asyncio.create_task(run_backup_worker()),
+        asyncio.create_task(run_stats_worker(bot)),  # profilda obunachilar soni
     ]
     try:
         await dp.start_polling(bot)

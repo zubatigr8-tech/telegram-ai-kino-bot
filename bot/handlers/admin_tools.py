@@ -11,6 +11,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from bot.media.downloader import clear_uploaded_cookies, cookie_status, save_uploaded_cookies
+from bot.stats_worker import update_profile_stats
 from shared.config import settings
 
 router = Router(name="admin_tools")
@@ -80,7 +81,28 @@ async def cookies_upload(message: Message) -> None:
     )
 
 
-@router.message(Command("admin", "server", "cookies", "cookies_clear"))
+@router.message(Command("profil", "profile"), F.from_user.id.in_(settings.ADMIN_IDS))
+async def profile_stats(message: Message) -> None:
+    """Bot profilidagi obunachilar sonini darhol yangilaydi va Telegram'da nima turganini ko'rsatadi."""
+    if not settings.SHOW_SUBSCRIBER_COUNT:
+        await message.answer("ℹ️ SHOW_SUBSCRIBER_COUNT=false — profilda son ko'rsatish o'chirilgan.")
+        return
+    try:
+        await update_profile_stats(message.bot, {})
+        short = await message.bot.get_my_short_description()
+        full = await message.bot.get_my_description()
+    except Exception as exc:
+        await message.answer(f"❌ Profilni yangilab bo'lmadi:\n<code>{h(str(exc))}</code>")
+        return
+    await message.answer(
+        "✅ <b>Bot profili yangilandi</b>\n\n"
+        f"<b>Nom ostidagi qisqa tavsif:</b>\n{h(short.short_description or '—')}\n\n"
+        f"<b>/start'dan oldingi tavsif:</b>\n{h(full.description or '—')}\n\n"
+        "Telegram profilda darhol ko'rinmasa — ilovani yopib, qayta oching (profil keshlanadi)."
+    )
+
+
+@router.message(Command("admin", "server", "cookies", "cookies_clear", "profil", "profile"))
 async def not_admin(message: Message) -> None:
     # Adminlar uchun /admin va /server yuqoridagi handlerlarda ishlaydi; bu yerga faqat
     # ADMIN_IDS'da yo'q foydalanuvchi tushadi — unga sababini tushuntiramiz

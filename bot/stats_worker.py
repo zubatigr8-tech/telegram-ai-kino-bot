@@ -51,7 +51,9 @@ async def update_profile_stats(bot: Bot, last: dict) -> None:
 
 async def run_stats_worker(bot: Bot) -> None:
     if not settings.SHOW_SUBSCRIBER_COUNT:
+        logger.info("Profilda obunachilar soni o'chirilgan (SHOW_SUBSCRIBER_COUNT=false)")
         return
+    logger.info("Profilda obunachilar sonini ko'rsatish ishga tushdi (har %d daqiqada)", UPDATE_INTERVAL_SECONDS // 60)
     last: dict = {}
     while True:
         try:

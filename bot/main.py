@@ -16,7 +16,7 @@ from bot.broadcast_worker import run_broadcast_worker
 from bot.stats_worker import run_stats_worker
 from bot.handlers import admin_panel, admin_tools, fallback, join_requests, media, music, start
 from bot.middlewares import SubscriptionMiddleware, UserMiddleware
-from shared.config import settings
+from shared.config import settings, storage_warning
 from shared.db.database import init_db
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
@@ -97,6 +97,14 @@ async def main() -> None:
         logger.info("Adminlar (ADMIN_IDS): %s", ", ".join(map(str, sorted(settings.ADMIN_IDS))))
     else:
         logger.warning("ADMIN_IDS bo'sh yoki noto'g'ri — /admin hech kimga ochilmaydi. Botga /myid yozib ID'ni oling.")
+    warning = storage_warning()
+    if warning:
+        logger.warning(warning)
+        for admin_id in settings.ADMIN_IDS:
+            try:
+                await bot.send_message(admin_id, warning)
+            except Exception:
+                pass
     workers = [
         asyncio.create_task(run_broadcast_worker(bot)),
         asyncio.create_task(run_backup_worker()),

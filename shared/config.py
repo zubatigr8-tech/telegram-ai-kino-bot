@@ -17,14 +17,21 @@ def _split_ids(raw: str) -> set[int]:
     return result
 
 
+# Doimiy disk: Railway Volume ulanganda RAILWAY_VOLUME_MOUNT_PATH o'zgaruvchisini Railway o'zi beradi;
+# boshqa hostinglarda odatda /data. Doimiy disk bo'lmasa — baza har deployda O'CHIB KETADI.
+PERSISTENT_DIR: str | None = os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or ("/data" if os.path.isdir("/data") else None)
+_DATA_DIR = Path(PERSISTENT_DIR) if PERSISTENT_DIR else BASE_DIR
+ON_RAILWAY = bool(os.getenv("RAILWAY_ENVIRONMENT_NAME") or os.getenv("RAILWAY_SERVICE_ID"))
+
+
 class Settings:
     BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")
     ADMIN_IDS: set[int] = _split_ids(os.getenv("ADMIN_IDS", ""))
 
     DATABASE_URL: str = os.getenv(
-        "DATABASE_URL", f"sqlite+aiosqlite:///{BASE_DIR / 'bot_database.db'}"
+        "DATABASE_URL", f"sqlite+aiosqlite:///{_DATA_DIR / 'bot_database.db'}"
     )
-    BACKUP_DIR: str = os.getenv("BACKUP_DIR", str(BASE_DIR / "backups"))
+    BACKUP_DIR: str = os.getenv("BACKUP_DIR", str(_DATA_DIR / "backups"))
 
     # --- Media yuklash (Instagram / YouTube / TikTok) ---
     # Vaqtinchalik yuklab olingan fayllar papkasi (yuborilgach o'chiriladi)
@@ -43,7 +50,7 @@ class Settings:
     # Admin botga yuborgan cookies fayllari shu papkada saqlanadi. Hostingda doimiy diskda (/data)
     # bo'lishi kerak, aks holda har deploy'da o'chib ketadi.
     COOKIES_DIR: str = os.getenv(
-        "COOKIES_DIR", "/data/cookies" if os.path.isdir("/data") else str(BASE_DIR / "cookies")
+        "COOKIES_DIR", str(_DATA_DIR / "cookies")
     )
     # Kompyuter/server Telegram yoki YouTube'ga to'g'ridan-to'g'ri ulana olmasa — proksi.
     # Masalan: socks5://127.0.0.1:1080 yoki http://user:pass@host:port. Ixtiyoriy.
@@ -83,3 +90,24 @@ class Settings:
 
 
 settings = Settings()
+
+
+def database_file() -> Path | None:
+    prefix = "sqlite+aiosqlite:///"
+    return Path(settings.DATABASE_URL[len(prefix):]) if settings.DATABASE_URL.startswith(prefix) else None
+
+
+def storage_warning() -> str | None:
+    """Baza hostingda doimiy diskda bo'lmasa — ogohlantirish matni (har deployda foydalanuvchilar o'chadi)."""
+    db = database_file()
+    if db is None or not ON_RAILWAY:
+        return None
+    if PERSISTENT_DIR and str(db.resolve()).startswith(str(Path(PERSISTENT_DIR).resolve())):
+        return None
+    return (
+        "⚠️ Ma'lumotlar bazasi doimiy diskda EMAS — har deploy/qayta ishga tushishda foydalanuvchilar "
+        "ro'yxati o'chib ketadi (obunachilar soni 0 dan boshlanadi).\n\n"
+        "Yechim: Railway → servis ustida o'ng tugma → Attach Volume → Mount path: /data. "
+        + ("Variables'dagi DATABASE_URL'ni o'chiring yoki /data/bot_database.db ga o'zgartiring."
+           if os.getenv("DATABASE_URL") else "Boshqa hech narsa sozlash shart emas.")
+    )

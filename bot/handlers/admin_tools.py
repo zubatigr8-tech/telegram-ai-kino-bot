@@ -12,7 +12,7 @@ from aiogram.types import Message
 
 from bot.media.downloader import clear_uploaded_cookies, cookie_status, save_uploaded_cookies
 from bot.stats_worker import update_profile_stats
-from shared.config import settings
+from shared.config import database_file, settings, storage_warning
 
 router = Router(name="admin_tools")
 
@@ -98,7 +98,9 @@ async def profile_stats(message: Message) -> None:
         "✅ <b>Bot profili yangilandi</b>\n\n"
         f"<b>Nom ostidagi qisqa tavsif:</b>\n{h(short.short_description or '—')}\n\n"
         f"<b>/start'dan oldingi tavsif:</b>\n{h(full.description or '—')}\n\n"
-        "Telegram profilda darhol ko'rinmasa — ilovani yopib, qayta oching (profil keshlanadi)."
+        "Telegram profilda darhol ko'rinmasa — ilovani yopib, qayta oching (profil keshlanadi).\n\n"
+        f"🗄 Baza: <code>{h(str(database_file() or settings.DATABASE_URL.split('://')[0]))}</code>"
+        + (f"\n\n{h(storage_warning())}" if storage_warning() else "")
     )
 
 

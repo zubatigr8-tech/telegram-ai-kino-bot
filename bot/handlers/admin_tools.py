@@ -5,8 +5,9 @@ from html import escape as h
 import os
 import platform
 
-from aiogram import F, Router
-from aiogram.enums import MessageOriginType
+from aiogram import Bot, F, Router
+from aiogram.enums import ChatMemberStatus, MessageOriginType
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command
 from aiogram.types import Message
 
@@ -127,8 +128,34 @@ async def get_channel_chat_id(message: Message) -> None:
         await message.answer("ℹ️ Bu xabar kanaldan forward qilinmagan.")
         return
     await message.answer(
-        f"📢 Kanal: <b>{origin.chat.title}</b>\n"
+        f"📢 Kanal: <b>{h(origin.chat.title or '')}</b>\n"
         f"Chat ID: <code>{origin.chat.id}</code>\n\n"
+        f"{await _bot_rights_text(message.bot, origin.chat.id)}\n\n"
         "Majburiy kanal qilib qo'shishda shu Chat ID'ni ishlating "
         "(/admin → 📢 Kanallar → ➕ Kanal qo'shish)."
     )
+
+
+async def _bot_rights_text(bot: Bot, chat_id: int) -> str:
+    """Bot shu kanalda adminmi va zayavkalarni tasdiqlash / post joylash huquqi bormi."""
+    try:
+        member = await bot.get_chat_member(chat_id, bot.id)
+    except TelegramAPIError:
+        return "❌ Bot bu kanalda <b>admin emas</b> (yoki kanalga qo'shilmagan)."
+    if member.status == ChatMemberStatus.CREATOR:
+        return "✅ Bot bu kanalning egasi."
+    if member.status != ChatMemberStatus.ADMINISTRATOR:
+        return "❌ Bot bu kanalda <b>admin emas</b>."
+
+    def mark(allowed: bool | None) -> str:
+        return "✅" if allowed else "❌"
+
+    lines = [
+        "✅ Bot bu kanalda <b>admin</b>.",
+        f"{mark(member.can_invite_users)} Zayavkalarni tasdiqlash (Foydalanuvchilarni qo'shish)",
+        f"{mark(member.can_post_messages)} Kanalga post joylash",
+    ]
+    if not member.can_invite_users:
+        lines.append("\n⚠️ Zayavkalar avtomatik tasdiqlanishi uchun botga "
+                     "«Foydalanuvchilarni qo'shish» huquqini bering.")
+    return "\n".join(lines)

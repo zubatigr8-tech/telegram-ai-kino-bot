@@ -75,7 +75,8 @@ class SongCache(Base):
 
 
 class JoinRequest(Base):
-    """Bot tasdiqlagan kanalga qo'shilish so'rovlari (statistika uchun)."""
+    """Kanalga qo'shilish so'rovlari (zayavkalar). Bot ularni faqat yig'adi; admin buyrug'i bilan tasdiqlanadi.
+    Kutilayotgan: approved=False va failed=False."""
     __tablename__ = "join_requests"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -83,5 +84,7 @@ class JoinRequest(Base):
     chat_id: Mapped[int] = mapped_column(BigInteger)
     chat_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Tasdiqlab bo'lmadi: foydalanuvchi so'rovni bekor qilgan yoki u boshqa yo'l bilan ko'rib chiqilgan
+    failed: Mapped[bool] = mapped_column(Boolean, default=False)
     message_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

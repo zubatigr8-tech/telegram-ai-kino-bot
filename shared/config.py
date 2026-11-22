@@ -57,13 +57,12 @@ class Settings:
     PROXY_URL: str = os.getenv("PROXY_URL", "").strip()
 
     # --- Kanalga qo'shilish so'rovlari (zayavkalar) ---
-    # Bot admin bo'lgan kanal/guruhlarga kelgan so'rovlarni avtomatik tasdiqlash
-    AUTO_APPROVE_JOIN_REQUESTS: bool = os.getenv("AUTO_APPROVE_JOIN_REQUESTS", "true").lower() in ("1", "true", "yes", "ha")
+    # Bot zayavkalarni o'zi tasdiqlamaydi: faqat yig'adi, admin /zayavkalar buyrug'i bilan hammasini tasdiqlaydi.
     # So'rov yuborgan foydalanuvchiga yuboriladigan xabar ({name} — foydalanuvchi ismi, {chat} — kanal nomi)
     JOIN_WELCOME_TEXT: str = os.getenv(
         "JOIN_WELCOME_TEXT",
         "Assalomu alaykum, {name}! 👋\n\n"
-        "✅ «{chat}» kanaliga qo'shilish so'rovingiz qabul qilindi.\n\n"
+        "📨 «{chat}» kanaliga qo'shilish so'rovingiz qabul qilindi, tez orada tasdiqlanadi.\n\n"
         "📥 Men Instagram, YouTube va TikTok videolarini yuklab, undagi qo'shiqni topib beraman. "
         "Qo'shiq matnidan parcha yozsangiz ham qo'shiqni topaman 🎵",
     ).replace("\\n", "\n")

@@ -31,6 +31,7 @@ def main_admin_kb():
     kb.button(text="📊 Statistika", callback_data="adm:stats")
     kb.button(text="👤 Foydalanuvchilar", callback_data="adm:users")
     kb.button(text="📢 Kanallar", callback_data="adm:channels")
+    kb.button(text="📨 Zayavkalar", callback_data="jr:list")
     kb.button(text="🔔 Xabar yuborish", callback_data="adm:broadcast")
     kb.adjust(1)
     return kb.as_markup()
@@ -92,6 +93,12 @@ async def cb_stats(callback: CallbackQuery) -> None:
         approved_joins = (
             await session.execute(select(func.count(JoinRequest.id)).where(JoinRequest.approved == True))  # noqa: E712
         ).scalar_one()
+        pending_joins = (
+            await session.execute(
+                select(func.count(JoinRequest.id))
+                .where(JoinRequest.approved == False, JoinRequest.failed == False)  # noqa: E712
+            )
+        ).scalar_one()
 
     text = (
         "📊 <b>Statistika</b>\n\n"
@@ -103,6 +110,7 @@ async def cb_stats(callback: CallbackQuery) -> None:
         f"📨 Jami yuborilgan xabarlar: <b>{total_sent}</b>\n"
         f"📥 Yuklangan videolar: <b>{total_downloads}</b>\n"
         f"🎵 Topilgan qo'shiqlar: <b>{total_songs}</b>\n"
+        f"⏳ Tasdiq kutayotgan zayavkalar: <b>{pending_joins}</b>\n"
         f"✅ Tasdiqlangan zayavkalar: <b>{approved_joins}</b>"
     )
     await callback.message.edit_text(text, reply_markup=back_kb())

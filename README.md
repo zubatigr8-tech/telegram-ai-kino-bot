@@ -172,20 +172,30 @@ Hech narsa qo'shimcha o'rnatish shart emas: `yt-dlp`, `shazamio` va `imageio-ffm
 - Ko'p tilli interfeys
 - SQLite o'rniga PostgreSQL (`DATABASE_URL`ni almashtirish kifoya)
 
-## 12. Zayavkalarni avtomatik tasdiqlash
+## 12. Zayavkalarni yig'ish va bir martada tasdiqlash
 
-1. Botni kanalga **admin** qiling va unga **"Foydalanuvchilarni qo'shish" (Invite users via link)** huquqini bering.
+Bot zayavkalarni **o'zi tasdiqlamaydi** — ular yig'ilib turadi va faqat admin buyrug'i bilan tasdiqlanadi.
+
+1. Botni kanalga **admin** qiling va unga **"Foydalanuvchilarni qo'shish" (Invite users via link)** huquqini bering
+   (tekshirish: kanaldan postni botga forward qiling — bot huquqlarini yozadi).
 2. Kanal havolasini **"Qo'shilish so'rovi" (Request to join)** rejimida yarating.
-3. Kimdir so'rov yuborsa, bot unga xabar yuboradi va so'rovni o'zi tasdiqlaydi.
+3. Kimdir so'rov yuborsa, bot unga xabar yuboradi va zayavkani ro'yxatga yozadi.
+   Kutayotganlar 1 000, 5 000, 10 000, 20 000, ... ga yetganda adminlarga bildirishnoma keladi.
+4. **`/zayavkalar`** (yoki `/admin` → 📨 Zayavkalar) → kanalni tanlang → **"Ha, tasdiqlash"**.
+   Bot hammasini fonda tasdiqlaydi (≈20 ta/soniya, 10 000 ta ≈ 9 daqiqa) va natijani yozadi.
 
-Sozlamalar: `AUTO_APPROVE_JOIN_REQUESTS` (true/false) va `JOIN_WELCOME_TEXT` (xabar matni).
-Telegram qoidasi: bot bunday foydalanuvchiga faqat so'rov paytida yoza oladi. Keyingi xabarlar
+Bot admin bo'lishidan **oldin** kelgan zayavkalarni Telegram botga ko'rsatmaydi — ularni
+`tools/approve_all_join_requests.py` skripti (kanal adminining akkaunti orqali) bir martada tasdiqlaydi.
+
+Sozlama: `JOIN_WELCOME_TEXT` (so'rov yuborganga boradigan xabar; bo'sh qoldirilsa — xabar yuborilmaydi).
+Telegram qoidasi: bot bunday foydalanuvchiga faqat so'rov ko'rib chiqilguncha yoza oladi. Keyingi xabarlar
 (broadcast) unga faqat u botga `/start` bosgan bo'lsa yetadi — shuning uchun xabarda "Botni ishga
 tushirish" tugmasi bor.
 
 ## Foydali buyruqlar (faqat adminlar uchun)
 
 - `/admin` — bot ichidagi admin panel
+- `/zayavkalar` — tasdiq kutayotgan zayavkalar va ularni bir martada tasdiqlash
 - `/server` — bot qayerda ishlayotganini ko'rsatadi (☁️ Railway yoki 🖥️ kompyuter)
 - `/cookies` — cookies holati; cookies faylini (`.txt`/`.json`) botga **fayl qilib** yuborsangiz, bot uni saqlaydi
 - `/myid` — Telegram ID'ingiz (hamma uchun; `ADMIN_IDS` ga shu raqam yoziladi)

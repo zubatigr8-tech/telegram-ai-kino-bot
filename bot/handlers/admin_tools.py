@@ -105,7 +105,10 @@ async def profile_stats(message: Message) -> None:
     )
 
 
-@router.message(Command("admin", "server", "cookies", "cookies_clear", "profil", "profile"))
+@router.message(
+    Command("admin", "server", "cookies", "cookies_clear", "profil", "profile", "zayavkalar", "requests"),
+    ~F.from_user.id.in_(settings.ADMIN_IDS),
+)
 async def not_admin(message: Message) -> None:
     # Adminlar uchun /admin va /server yuqoridagi handlerlarda ishlaydi; bu yerga faqat
     # ADMIN_IDS'da yo'q foydalanuvchi tushadi — unga sababini tushuntiramiz
